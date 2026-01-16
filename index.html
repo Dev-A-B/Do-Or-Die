@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Do or Die | DOD</title>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, set, onValue, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+        // --- FIREBASE CONFIGURATION ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyByLeOnstoCGQ9vew1NYXtBe2E_xyUVgDg",
+            authDomain: "do-or-die-33610.firebaseapp.com",
+            databaseURL: "https://do-or-die-33610-default-rtdb.firebaseio.com",
+            projectId: "do-or-die-33610",
+            storageBucket: "do-or-die-33610.firebasestorage.app",
+            messagingSenderId: "816098304473",
+            appId: "1:816098304473:web:4e48a2004ccbe70db0b9c8",
+            measurementId: "G-V9K09W36L9"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        window.db = getDatabase(app);
+        window.auth = getAuth(app);
+        
+        window.ref = ref;
+        window.set = set;
+        window.onValue = onValue;
+        window.get = get;
+        window.signInAnonymously = signInAnonymously;
+    </script>
+
+    <!-- Tailwind Config -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        dodViolet: '#7c3aed', // Elegant Deep Purple
+                        dodGreen: '#22c55e',  // Partner Color (Green-500)
+                        dodDark: '#000000',   // Pure Black
+                        dodCard: '#121212',   // Slightly lighter black
+                        dodInput: '#1F1F1F',  // Dark Gray inputs
+                        dodText: '#E5E5E5'
+                    },
+                    fontFamily: {
+                        sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'],
+                        mono: ['SF Mono', 'Menlo', 'Monaco', 'Courier New', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { background-color: #000000; color: #E5E5E5; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+        input, select, button { outline: none; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* Dynamic Theme Classes */
+        .theme-violet { --theme-color: #7c3aed; }
+        .theme-green { --theme-color: #22c55e; }
+        .text-theme { color: var(--theme-color); }
+        .bg-theme { background-color: var(--theme-color); }
+        .border-theme { border-color: var(--theme-color); }
+        .ring-theme { --tw-ring-color: var(--theme-color); }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useMemo } = React;
+
+        // --- UTILS ---
+        const getTodayDateString = () => {
+            const date = new Date();
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        };
+
+        // --- COMPONENTS ---
+
+        const SetupScreen = ({ error }) => (
+            <div className="min-h-screen bg-dodDark flex flex-col items-center justify-center p-6 text-center">
+                <h1 className="text-2xl font-bold text-dodViolet mb-2">Authentication Error</h1>
+                <p className="text-gray-400 mb-6 text-sm">{error?.message || "Could not connect."}</p>
+                <div className="bg-dodCard p-4 rounded text-left text-xs text-gray-400 w-full max-w-md">
+                    Check Firebase Console: Auth > Anonymous Enabled? Database Rules > Public?
+                </div>
+            </div>
+        );
+
+        // 1. STOPWATCH
+        const Stopwatch = ({ label, themeColorClass, textColorClass }) => {
+            const [time, setTime] = useState(0);
+            const [isRunning, setIsRunning] = useState(false);
+            const timerRef = useRef(null);
+
+            const toggle = () => {
+                if (isRunning) {
+                    clearInterval(timerRef.current);
+                    setIsRunning(false);
+                    setTime(0);
+                } else {
+                    const startTime = Date.now() - time;
+                    timerRef.current = setInterval(() => {
+                        setTime(Date.now() - startTime);
+                    }, 100);
+                    setIsRunning(true);
+                }
+            };
+
+            const format = (ms) => {
+                const mins = Math.floor(ms / 60000).toString().padStart(2, '0');
+                const secs = Math.floor((ms % 60000) / 1000).toString().padStart(2, '0');
+                const decis = Math.floor((ms % 1000) / 100);
+                return `${mins}:${secs}.${decis}`;
+            };
+
+            return (
+                <div onClick={toggle} className={`flex-1 mx-1 p-2 rounded border flex flex-col items-center justify-center cursor-pointer active:opacity-80 transition-colors ${isRunning ? `bg-dodCard ${themeColorClass}` : 'bg-dodCard border-transparent'}`}>
+                    <span className="text-[10px] font-bold tracking-widest text-gray-500 uppercase">{label}</span>
+                    <div className={`text-2xl font-mono font-bold tracking-tighter ${isRunning ? textColorClass : 'text-white'}`}>
+                        {format(time)}
+                    </div>
+                </div>
+            );
+        };
+
+        // 2. EXERCISE ROW
+        const ExerciseRow = ({ exercise, exIndex, updateExercise, deleteExercise, allExerciseNames, themeClass }) => {
+            const addSet = () => {
+                const newSets = [...(exercise.sets || []), { weight: '', reps: '' }];
+                updateExercise(exIndex, { ...exercise, sets: newSets });
+            };
+
+            const updateSet = (sIndex, field, value) => {
+                const newSets = [...exercise.sets];
+                newSets[sIndex][field] = value;
+                updateExercise(exIndex, { ...exercise, sets: newSets });
+            };
+
+            const removeSet = (sIndex) => {
+                const newSets = exercise.sets.filter((_, i) => i !== sIndex);
+                updateExercise(exIndex, { ...exercise, sets: newSets });
+            };
+
+            return (
+                <div className={`mb-4 bg-dodCard border border-white/5 rounded-lg overflow-hidden ${themeClass}`}>
+                    <div className="flex justify-between items-center p-3 bg-white/5 border-b border-white/5">
+                        <input 
+                            list={`list-${exIndex}`}
+                            value={exercise.name}
+                            onChange={(e) => updateExercise(exIndex, {...exercise, name: e.target.value})}
+                            className="bg-transparent text-white font-bold text-lg w-full placeholder-gray-600 uppercase tracking-tight"
+                            placeholder="EXERCISE NAME"
+                        />
+                        <datalist id={`list-${exIndex}`}>
+                            {allExerciseNames.map((name, i) => <option key={i} value={name} />)}
+                        </datalist>
+                        <button onClick={() => deleteExercise(exIndex)} className="text-gray-600 px-2 font-bold hover:text-white">×</button>
+                    </div>
+                    
+                    <div className="p-2 space-y-2">
+                        {(exercise.sets || []).map((set, sIndex) => (
+                            <div key={sIndex} className="flex gap-2 items-center">
+                                <span className="text-gray-600 text-[10px] w-4 font-mono text-center pt-1">{sIndex + 1}</span>
+                                <div className="flex-1 flex gap-2">
+                                    <div className="relative flex-1">
+                                        <input 
+                                            type="number" value={set.weight}
+                                            onChange={(e) => updateSet(sIndex, 'weight', e.target.value)}
+                                            className="bg-dodInput text-white p-2 pl-3 rounded w-full font-mono text-sm border border-transparent focus:border-theme ring-theme focus:ring-1"
+                                        />
+                                        <span className="absolute right-2 top-2 text-xs text-gray-600 pointer-events-none">kg</span>
+                                    </div>
+                                    <div className="relative flex-1">
+                                        <input 
+                                            type="number" value={set.reps}
+                                            onChange={(e) => updateSet(sIndex, 'reps', e.target.value)}
+                                            className="bg-dodInput text-white p-2 pl-3 rounded w-full font-mono text-sm border border-transparent focus:border-theme ring-theme focus:ring-1"
+                                        />
+                                        <span className="absolute right-2 top-2 text-xs text-gray-600 pointer-events-none">rep</span>
+                                    </div>
+                                </div>
+                                <button onClick={() => removeSet(sIndex)} className="text-gray-700 w-6 h-6 flex items-center justify-center text-xs">×</button>
+                            </div>
+                        ))}
+                        <button onClick={addSet} className="w-full py-2 mt-2 text-[10px] font-bold text-gray-400 bg-dodInput rounded hover:text-white hover:bg-white/10 uppercase tracking-widest transition-colors">
+                            + Add Set
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+
+        // 3. WORKOUT LOGGER
+        const WorkoutLogger = ({ userKey, allHistory, themeClass, activeColorClass }) => {
+            const [split, setSplit] = useState("");
+            const [exercises, setExercises] = useState([]);
+            const [status, setStatus] = useState("");
+            const date = getTodayDateString();
+
+            const allExerciseNames = useMemo(() => {
+                const names = new Set();
+                if (allHistory) {
+                    Object.values(allHistory).forEach(dateObj => {
+                        ['me', 'partner'].forEach(u => {
+                            if (dateObj[u]?.exercises) {
+                                dateObj[u].exercises.forEach(e => { if(e.name) names.add(e.name) });
+                            }
+                        });
+                    });
+                }
+                return Array.from(names).sort();
+            }, [allHistory]);
+
+            useEffect(() => {
+                if (!window.db) return;
+                const dataRef = window.ref(window.db, `${date}/${userKey}`);
+                const unsubscribe = window.onValue(dataRef, (snapshot) => {
+                    const data = snapshot.val();
+                    if (data) {
+                        setSplit(data.split || "");
+                        setExercises(data.exercises || []);
+                    } else {
+                        setSplit("");
+                        setExercises([]);
+                    }
+                });
+                return () => unsubscribe();
+            }, [userKey, date]);
+
+            const saveData = async (newExercises, newSplit) => {
+                setStatus("Saving...");
+                try {
+                    await window.set(window.ref(window.db, `${date}/${userKey}`), {
+                        split: newSplit !== undefined ? newSplit : split,
+                        exercises: newExercises !== undefined ? newExercises : exercises
+                    });
+                    setStatus("Saved");
+                    setTimeout(() => setStatus(""), 1500);
+                } catch (e) {
+                    setStatus("Error");
+                }
+            };
+
+            const handleAddExercise = () => {
+                const newEx = [...exercises, { name: "", sets: [{weight: '', reps: ''}] }];
+                setExercises(newEx);
+                saveData(newEx, undefined);
+            };
+
+            const handleUpdateExercise = (index, data) => {
+                const newEx = [...exercises];
+                newEx[index] = data;
+                setExercises(newEx);
+                saveData(newEx, undefined);
+            };
+
+            const handleDeleteExercise = (index) => {
+                const newEx = exercises.filter((_, i) => i !== index);
+                setExercises(newEx);
+                saveData(newEx, undefined);
+            };
+
+            const splits = ["Push", "Pull", "Legs", "Upper", "Lower", "Full Body", "Cardio", "Arms", "Rest"];
+
+            return (
+                <div className={`pb-24 animate-fade-in ${themeClass}`}>
+                    <div className="mb-6">
+                        <div className={`text-[10px] uppercase tracking-widest mb-2 font-bold text-theme`}>Today's Split</div>
+                        <div className="flex flex-wrap gap-2">
+                            {splits.map(s => (
+                                <button 
+                                    key={s}
+                                    onClick={() => { setSplit(s); saveData(undefined, s); }}
+                                    className={`px-3 py-1 rounded text-[10px] font-bold border transition-colors uppercase ${split === s ? `bg-theme border-theme text-white` : 'border-gray-800 text-gray-500 bg-dodCard'}`}
+                                >
+                                    {s}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        {exercises.map((ex, i) => (
+                            <ExerciseRow 
+                                key={i} 
+                                exercise={ex} 
+                                exIndex={i} 
+                                updateExercise={handleUpdateExercise}
+                                deleteExercise={handleDeleteExercise}
+                                allExerciseNames={allExerciseNames}
+                                themeClass={themeClass}
+                            />
+                        ))}
+                    </div>
+
+                    <button 
+                        onClick={handleAddExercise}
+                        className={`mt-6 w-full py-4 rounded border border-dashed border-gray-800 text-gray-500 font-bold hover:border-theme hover:text-theme transition-colors text-sm tracking-widest uppercase`}
+                    >
+                        + Add Exercise
+                    </button>
+
+                    {status && (
+                        <div className={`fixed bottom-20 left-1/2 transform -translate-x-1/2 bg-theme text-white px-4 py-1 rounded-full text-xs font-bold shadow-xl z-50`}>
+                            {status}
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        // 4. HISTORY PAGE (Enhanced Search)
+        const HistoryPage = ({ historyData }) => {
+            const [searchTerm, setSearchTerm] = useState("");
+            
+            const allExerciseNames = useMemo(() => {
+                const names = new Set();
+                if (historyData) {
+                    Object.values(historyData).forEach(dateObj => {
+                        ['me', 'partner'].forEach(u => {
+                            if (dateObj[u]?.exercises) {
+                                dateObj[u].exercises.forEach(e => { if(e.name) names.add(e.name) });
+                            }
+                        });
+                    });
+                }
+                return Array.from(names).sort();
+            }, [historyData]);
+
+            const dates = Object.keys(historyData || {}).sort().reverse();
+
+            // Filter logic separated by User
+            const searchResults = useMemo(() => {
+                if (!searchTerm) return null;
+                
+                const meResults = [];
+                const partnerResults = [];
+
+                dates.forEach(date => {
+                    const dayData = historyData[date];
+                    
+                    // Check Me
+                    if (dayData.me?.exercises) {
+                        dayData.me.exercises.forEach(ex => {
+                            if (ex.name === searchTerm) {
+                                meResults.push({ date, split: dayData.me.split, exercise: ex });
+                            }
+                        });
+                    }
+                    // Check Partner
+                    if (dayData.partner?.exercises) {
+                        dayData.partner.exercises.forEach(ex => {
+                            if (ex.name === searchTerm) {
+                                partnerResults.push({ date, split: dayData.partner.split, exercise: ex });
+                            }
+                        });
+                    }
+                });
+                return { me: meResults, partner: partnerResults };
+            }, [searchTerm, historyData, dates]);
+
+            return (
+                <div className="pb-24 space-y-4">
+                    {/* SEARCH BAR */}
+                    <div className="sticky top-0 bg-dodDark z-10 pt-2 pb-4 border-b border-white/10">
+                        <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">Search History</label>
+                        <div className="relative">
+                            <input 
+                                list="history-search" 
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                placeholder="Select Exercise..."
+                                className="w-full bg-dodInput text-white p-3 rounded border border-transparent focus:border-dodViolet placeholder-gray-600 text-sm"
+                            />
+                            <datalist id="history-search">
+                                {allExerciseNames.map((name, i) => <option key={i} value={name} />)}
+                            </datalist>
+                            {searchTerm && (
+                                <button 
+                                    onClick={() => setSearchTerm("")}
+                                    className="absolute right-2 top-2 text-dodViolet text-xs font-bold p-1"
+                                >
+                                    CLEAR
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* SEARCH MODE VIEW (Split Columns) */}
+                    {searchTerm && searchResults && (
+                        <div className="animate-fade-in">
+                            <div className="text-gray-500 text-[10px] uppercase tracking-widest mb-4 text-center">
+                                History for "{searchTerm}"
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-2">
+                                {/* ME COLUMN */}
+                                <div>
+                                    <div className="text-dodViolet text-xs font-black uppercase mb-2 tracking-widest text-center border-b border-dodViolet/30 pb-1">Me</div>
+                                    <div className="space-y-2">
+                                        {searchResults.me.length === 0 && <div className="text-gray-600 text-[10px] text-center">No history</div>}
+                                        {searchResults.me.map((item, i) => (
+                                            <div key={i} className="bg-dodCard border-l-2 border-dodViolet p-2 rounded-r">
+                                                {/* Sets as main content */}
+                                                <div className="space-y-1 mb-2">
+                                                    {item.exercise.sets?.map((set, si) => (
+                                                        <div key={si} className="text-sm font-bold text-white font-mono">
+                                                            {set.weight}<span className="text-xs text-gray-500 font-normal ml-0.5">kg</span> <span className="text-gray-600 text-xs mx-0.5">x</span> {set.reps}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                {/* Date as subtext */}
+                                                <div className="text-gray-500 text-[9px] uppercase tracking-wider text-right">{item.date}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* PARTNER COLUMN */}
+                                <div>
+                                    <div className="text-dodGreen text-xs font-black uppercase mb-2 tracking-widest text-center border-b border-dodGreen/30 pb-1">Partner</div>
+                                    <div className="space-y-2">
+                                        {searchResults.partner.length === 0 && <div className="text-gray-600 text-[10px] text-center">No history</div>}
+                                        {searchResults.partner.map((item, i) => (
+                                            <div key={i} className="bg-dodCard border-l-2 border-dodGreen p-2 rounded-r">
+                                                {/* Sets as main content */}
+                                                <div className="space-y-1 mb-2">
+                                                    {item.exercise.sets?.map((set, si) => (
+                                                        <div key={si} className="text-sm font-bold text-white font-mono">
+                                                            {set.weight}<span className="text-xs text-gray-500 font-normal ml-0.5">kg</span> <span className="text-gray-600 text-xs mx-0.5">x</span> {set.reps}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                {/* Date as subtext */}
+                                                <div className="text-gray-500 text-[9px] uppercase tracking-wider text-right">{item.date}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* DEFAULT VIEW (FULL HISTORY) */}
+                    {!searchTerm && dates.map(dateStr => {
+                        const dayData = historyData[dateStr];
+                        if (!dayData || typeof dayData !== 'object') return null;
+
+                        return (
+                            <div key={dateStr} className="bg-dodCard border border-white/5 rounded-lg overflow-hidden">
+                                <div className="bg-white/5 p-2 px-3 flex justify-between items-center">
+                                    <h3 className="text-sm font-bold text-white">{dateStr}</h3>
+                                </div>
+                                <div className="grid grid-cols-2 divide-x divide-white/5">
+                                    {/* ME COLUMN */}
+                                    <div className="p-3">
+                                        <div className="text-dodViolet text-[10px] font-black uppercase mb-2 tracking-widest">Me <span className="text-gray-600 font-normal ml-1">| {dayData.me?.split || "-"}</span></div>
+                                        <div className="space-y-3">
+                                            {(dayData.me?.exercises || []).map((ex, i) => (
+                                                <div key={i}>
+                                                    <div className="text-xs text-white font-bold uppercase mb-1">{ex.name}</div>
+                                                    <div className="space-y-0.5">
+                                                        {(ex.sets || []).map((s, si) => (
+                                                            <div key={si} className="text-[11px] font-mono text-gray-400">
+                                                                {s.weight}<span className="text-gray-600">kg</span> x {s.reps}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {!dayData.me?.exercises && <div className="text-[10px] text-gray-700">Rest Day</div>}
+                                        </div>
+                                    </div>
+                                    {/* PARTNER COLUMN */}
+                                    <div className="p-3">
+                                        <div className="text-dodGreen text-[10px] font-black uppercase mb-2 tracking-widest">Partner <span className="text-gray-600 font-normal ml-1">| {dayData.partner?.split || "-"}</span></div>
+                                        <div className="space-y-3">
+                                            {(dayData.partner?.exercises || []).map((ex, i) => (
+                                                <div key={i}>
+                                                    <div className="text-xs text-white font-bold uppercase mb-1">{ex.name}</div>
+                                                    <div className="space-y-0.5">
+                                                        {(ex.sets || []).map((s, si) => (
+                                                            <div key={si} className="text-[11px] font-mono text-gray-400">
+                                                                {s.weight}<span className="text-gray-600">kg</span> x {s.reps}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {!dayData.partner?.exercises && <div className="text-[10px] text-gray-700">Rest Day</div>}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            );
+        };
+
+        // --- MAIN APP ---
+        const App = () => {
+            const [tab, setTab] = useState("me");
+            const [isAuth, setIsAuth] = useState(false);
+            const [authError, setAuthError] = useState(null);
+            const [allHistory, setAllHistory] = useState(null);
+
+            useEffect(() => {
+                if(!window.auth) return;
+                const unsubAuth = window.auth.onAuthStateChanged((user) => {
+                    if (user) {
+                        setIsAuth(true);
+                        const dbRef = window.ref(window.db, '/');
+                        window.onValue(dbRef, (snapshot) => {
+                            setAllHistory(snapshot.val());
+                        });
+                    } else {
+                        window.signInAnonymously(window.auth).catch(err => setAuthError(err));
+                    }
+                });
+                return () => unsubAuth();
+            }, []);
+
+            if (authError) return <SetupScreen error={authError} />;
+            if (!isAuth) return <div className="h-screen bg-black flex items-center justify-center text-dodViolet font-bold animate-pulse tracking-widest">LOADING GYM...</div>;
+
+            return (
+                <div className="max-w-md mx-auto min-h-screen bg-black flex flex-col font-sans selection:bg-dodViolet selection:text-white">
+                    {/* HEADER */}
+                    <div className="p-4 pt-6 bg-black border-b border-white/10">
+                        <div className="flex items-start justify-between mb-4">
+                            <div>
+                                <h1 className="text-4xl font-black text-white leading-none tracking-tighter italic">DOD</h1>
+                                <p className="text-dodViolet text-[0.6rem] font-bold tracking-[0.4em] uppercase">do or die</p>
+                            </div>
+                            <div className="text-right">
+                                <div className="text-[10px] text-gray-500 font-mono uppercase tracking-widest">{getTodayDateString()}</div>
+                            </div>
+                        </div>
+                        <div className="flex justify-between -mx-1">
+                            <Stopwatch label="ME" themeColorClass="border-dodViolet" textColorClass="text-dodViolet" />
+                            <Stopwatch label="PARTNER" themeColorClass="border-dodGreen" textColorClass="text-dodGreen" />
+                        </div>
+                    </div>
+
+                    {/* CONTENT */}
+                    <main className="flex-1 p-4 overflow-y-auto no-scrollbar">
+                        {tab === 'me' && <WorkoutLogger userKey="me" allHistory={allHistory} themeClass="theme-violet" />}
+                        {tab === 'partner' && <WorkoutLogger userKey="partner" allHistory={allHistory} themeClass="theme-green" />}
+                        {tab === 'history' && <HistoryPage historyData={allHistory} />}
+                    </main>
+
+                    {/* NAV */}
+                    <nav className="fixed bottom-0 max-w-md w-full bg-dodCard border-t border-white/10 flex justify-around p-1 pb-safe z-20">
+                        <button 
+                            onClick={() => setTab('me')} 
+                            className={`flex-1 py-4 text-[10px] font-black uppercase tracking-[0.2em] transition-colors ${tab === 'me' ? 'text-dodViolet' : 'text-gray-600'}`}
+                        >
+                            ME
+                        </button>
+                        <button 
+                            onClick={() => setTab('partner')} 
+                            className={`flex-1 py-4 text-[10px] font-black uppercase tracking-[0.2em] transition-colors ${tab === 'partner' ? 'text-dodGreen' : 'text-gray-600'}`}
+                        >
+                            PARTNER
+                        </button>
+                        <button 
+                            onClick={() => setTab('history')} 
+                            className={`flex-1 py-4 text-[10px] font-black uppercase tracking-[0.2em] transition-colors ${tab === 'history' ? 'text-white' : 'text-gray-600'}`}
+                        >
+                            HISTORY
+                        </button>
+                    </nav>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
