@@ -223,7 +223,7 @@
                 const names = new Set();
                 if (allHistory) {
                     Object.values(allHistory).forEach(dateObj => {
-                        ['me', 'partner'].forEach(u => {
+                        ['raghendh', 'devanandh'].forEach(u => {
                             if (dateObj[u]?.exercises) {
                                 dateObj[u].exercises.forEach(e => { if(e.name) names.add(e.name) });
                             }
@@ -339,7 +339,7 @@
                 const names = new Set();
                 if (historyData) {
                     Object.values(historyData).forEach(dateObj => {
-                        ['me', 'partner'].forEach(u => {
+                        ['raghendh', 'devanandh'].forEach(u => {
                             if (dateObj[u]?.exercises) {
                                 dateObj[u].exercises.forEach(e => { if(e.name) names.add(e.name) });
                             }
@@ -355,30 +355,30 @@
             const searchResults = useMemo(() => {
                 if (!searchTerm) return null;
                 
-                const meResults = [];
-                const partnerResults = [];
+                const raghendhResults = [];
+                const devanandhResults = [];
 
                 dates.forEach(date => {
                     const dayData = historyData[date];
                     
-                    // Check Me
-                    if (dayData.me?.exercises) {
-                        dayData.me.exercises.forEach(ex => {
+                    // Check Raghendh
+                    if (dayData.raghendh?.exercises) {
+                        dayData.raghendh.exercises.forEach(ex => {
                             if (ex.name === searchTerm) {
-                                meResults.push({ date, split: dayData.me.split, exercise: ex });
+                                raghendhResults.push({ date, split: dayData.raghendh.split, exercise: ex });
                             }
                         });
                     }
-                    // Check Partner
-                    if (dayData.partner?.exercises) {
-                        dayData.partner.exercises.forEach(ex => {
+                    // Check Devanandh
+                    if (dayData.devanandh?.exercises) {
+                        dayData.devanandh.exercises.forEach(ex => {
                             if (ex.name === searchTerm) {
-                                partnerResults.push({ date, split: dayData.partner.split, exercise: ex });
+                                devanandhResults.push({ date, split: dayData.devanandh.split, exercise: ex });
                             }
                         });
                     }
                 });
-                return { me: meResults, partner: partnerResults };
+                return { raghendh: raghendhResults, devanandh: devanandhResults };
             }, [searchTerm, historyData, dates]);
 
             return (
@@ -416,12 +416,12 @@
                             </div>
                             
                             <div className="grid grid-cols-2 gap-2">
-                                {/* ME COLUMN */}
+                                {/* RAGHENDH COLUMN */}
                                 <div>
-                                    <div className="text-dodViolet text-xs font-black uppercase mb-2 tracking-widest text-center border-b border-dodViolet/30 pb-1">Me</div>
+                                    <div className="text-dodViolet text-xs font-black uppercase mb-2 tracking-widest text-center border-b border-dodViolet/30 pb-1">Raghendh</div>
                                     <div className="space-y-2">
-                                        {searchResults.me.length === 0 && <div className="text-gray-600 text-[10px] text-center">No history</div>}
-                                        {searchResults.me.map((item, i) => (
+                                        {searchResults.raghendh.length === 0 && <div className="text-gray-600 text-[10px] text-center">No history</div>}
+                                        {searchResults.raghendh.map((item, i) => (
                                             <div key={i} className="bg-dodCard border-l-2 border-dodViolet p-2 rounded-r">
                                                 {/* Sets as main content */}
                                                 <div className="space-y-1 mb-2">
@@ -438,12 +438,12 @@
                                     </div>
                                 </div>
 
-                                {/* PARTNER COLUMN */}
+                                {/* DEVANANDH COLUMN */}
                                 <div>
-                                    <div className="text-dodGreen text-xs font-black uppercase mb-2 tracking-widest text-center border-b border-dodGreen/30 pb-1">Partner</div>
+                                    <div className="text-dodGreen text-xs font-black uppercase mb-2 tracking-widest text-center border-b border-dodGreen/30 pb-1">Devanandh</div>
                                     <div className="space-y-2">
-                                        {searchResults.partner.length === 0 && <div className="text-gray-600 text-[10px] text-center">No history</div>}
-                                        {searchResults.partner.map((item, i) => (
+                                        {searchResults.devanandh.length === 0 && <div className="text-gray-600 text-[10px] text-center">No history</div>}
+                                        {searchResults.devanandh.map((item, i) => (
                                             <div key={i} className="bg-dodCard border-l-2 border-dodGreen p-2 rounded-r">
                                                 {/* Sets as main content */}
                                                 <div className="space-y-1 mb-2">
@@ -474,11 +474,11 @@
                                     <h3 className="text-sm font-bold text-white">{dateStr}</h3>
                                 </div>
                                 <div className="grid grid-cols-2 divide-x divide-white/5">
-                                    {/* ME COLUMN */}
+                                    {/* RAGHENDH COLUMN */}
                                     <div className="p-3">
-                                        <div className="text-dodViolet text-[10px] font-black uppercase mb-2 tracking-widest">Me <span className="text-gray-600 font-normal ml-1">| {dayData.me?.split || "-"}</span></div>
+                                        <div className="text-dodViolet text-[10px] font-black uppercase mb-2 tracking-widest">Raghendh <span className="text-gray-600 font-normal ml-1">| {dayData.raghendh?.split || "-"}</span></div>
                                         <div className="space-y-3">
-                                            {(dayData.me?.exercises || []).map((ex, i) => (
+                                            {(dayData.raghendh?.exercises || []).map((ex, i) => (
                                                 <div key={i}>
                                                     <div className="text-xs text-white font-bold uppercase mb-1">{ex.name}</div>
                                                     <div className="space-y-0.5">
@@ -490,14 +490,14 @@
                                                     </div>
                                                 </div>
                                             ))}
-                                            {!dayData.me?.exercises && <div className="text-[10px] text-gray-700">Rest Day</div>}
+                                            {!dayData.raghendh?.exercises && <div className="text-[10px] text-gray-700">Rest Day</div>}
                                         </div>
                                     </div>
-                                    {/* PARTNER COLUMN */}
+                                    {/* DEVANANDH COLUMN */}
                                     <div className="p-3">
-                                        <div className="text-dodGreen text-[10px] font-black uppercase mb-2 tracking-widest">Partner <span className="text-gray-600 font-normal ml-1">| {dayData.partner?.split || "-"}</span></div>
+                                        <div className="text-dodGreen text-[10px] font-black uppercase mb-2 tracking-widest">Devanandh <span className="text-gray-600 font-normal ml-1">| {dayData.devanandh?.split || "-"}</span></div>
                                         <div className="space-y-3">
-                                            {(dayData.partner?.exercises || []).map((ex, i) => (
+                                            {(dayData.devanandh?.exercises || []).map((ex, i) => (
                                                 <div key={i}>
                                                     <div className="text-xs text-white font-bold uppercase mb-1">{ex.name}</div>
                                                     <div className="space-y-0.5">
@@ -509,7 +509,7 @@
                                                     </div>
                                                 </div>
                                             ))}
-                                            {!dayData.partner?.exercises && <div className="text-[10px] text-gray-700">Rest Day</div>}
+                                            {!dayData.devanandh?.exercises && <div className="text-[10px] text-gray-700">Rest Day</div>}
                                         </div>
                                     </div>
                                 </div>
@@ -522,7 +522,7 @@
 
         // --- MAIN APP ---
         const App = () => {
-            const [tab, setTab] = useState("me");
+            const [tab, setTab] = useState("raghendh");
             const [isAuth, setIsAuth] = useState(false);
             const [authError, setAuthError] = useState(null);
             const [allHistory, setAllHistory] = useState(null);
@@ -560,31 +560,31 @@
                             </div>
                         </div>
                         <div className="flex justify-between -mx-1">
-                            <Stopwatch label="ME" themeColorClass="border-dodViolet" textColorClass="text-dodViolet" />
-                            <Stopwatch label="PARTNER" themeColorClass="border-dodGreen" textColorClass="text-dodGreen" />
+                            <Stopwatch label="RAGHENDH" themeColorClass="border-dodViolet" textColorClass="text-dodViolet" />
+                            <Stopwatch label="DEVANANDH" themeColorClass="border-dodGreen" textColorClass="text-dodGreen" />
                         </div>
                     </div>
 
                     {/* CONTENT */}
                     <main className="flex-1 p-4 overflow-y-auto no-scrollbar">
-                        {tab === 'me' && <WorkoutLogger userKey="me" allHistory={allHistory} themeClass="theme-violet" />}
-                        {tab === 'partner' && <WorkoutLogger userKey="partner" allHistory={allHistory} themeClass="theme-green" />}
+                        {tab === 'raghendh' && <WorkoutLogger userKey="raghendh" allHistory={allHistory} themeClass="theme-violet" />}
+                        {tab === 'devanandh' && <WorkoutLogger userKey="devanandh" allHistory={allHistory} themeClass="theme-green" />}
                         {tab === 'history' && <HistoryPage historyData={allHistory} />}
                     </main>
 
                     {/* NAV */}
                     <nav className="fixed bottom-0 max-w-md w-full bg-dodCard border-t border-white/10 flex justify-around p-1 pb-safe z-20">
                         <button 
-                            onClick={() => setTab('me')} 
-                            className={`flex-1 py-4 text-[10px] font-black uppercase tracking-[0.2em] transition-colors ${tab === 'me' ? 'text-dodViolet' : 'text-gray-600'}`}
+                            onClick={() => setTab('raghendh')} 
+                            className={`flex-1 py-4 text-[10px] font-black uppercase tracking-[0.2em] transition-colors ${tab === 'raghendh' ? 'text-dodViolet' : 'text-gray-600'}`}
                         >
-                            ME
+                            RAGHENDH
                         </button>
                         <button 
-                            onClick={() => setTab('partner')} 
-                            className={`flex-1 py-4 text-[10px] font-black uppercase tracking-[0.2em] transition-colors ${tab === 'partner' ? 'text-dodGreen' : 'text-gray-600'}`}
+                            onClick={() => setTab('devanandh')} 
+                            className={`flex-1 py-4 text-[10px] font-black uppercase tracking-[0.2em] transition-colors ${tab === 'devanandh' ? 'text-dodGreen' : 'text-gray-600'}`}
                         >
-                            PARTNER
+                            DEVANANDH
                         </button>
                         <button 
                             onClick={() => setTab('history')} 
