@@ -12,7 +12,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="icon-192.png">
     
-    <!-- Fonts: Roboto (Material Standard) -->
+    <!-- Fonts: Roboto -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
@@ -21,22 +21,21 @@
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     
-    <!-- Babel for JSX -->
+    <!-- Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
-    <!-- Tailwind CSS -->
+    <!-- Tailwind -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Phosphor Icons (Regular & Fill) -->
+    <!-- Phosphor Icons -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     
-    <!-- Firebase SDKs -->
+    <!-- Firebase -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, set, update, onValue, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-        // --- FIREBASE CONFIGURATION ---
         const firebaseConfig = {
             apiKey: "AIzaSyByLeOnstoCGQ9vew1NYXtBe2E_xyUVgDg",
             authDomain: "do-or-die-33610.firebaseapp.com",
@@ -51,7 +50,6 @@
         const app = initializeApp(firebaseConfig);
         window.db = getDatabase(app);
         window.auth = getAuth(app);
-        
         window.ref = ref;
         window.set = set;
         window.update = update;
@@ -60,53 +58,31 @@
         window.signInAnonymously = signInAnonymously;
     </script>
 
-    <!-- Tailwind Config (Material 3 Theme) -->
+    <!-- Tailwind Config -->
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
-                        // Core Brand
-                        mdSysColorPrimary: '#FF6500', // Orange
-                        mdSysColorOnPrimary: '#FFFFFF',
-                        mdSysColorPrimaryContainer: '#331400',
-                        mdSysColorOnPrimaryContainer: '#FFCCAA',
-
-                        // Partner (Secondary)
-                        mdSysColorSecondary: '#38bdf8', // Sky Blue
-                        mdSysColorOnSecondary: '#003258',
-                        mdSysColorSecondaryContainer: '#00497d',
-                        mdSysColorOnSecondaryContainer: '#cfe5ff',
-
-                        // Surfaces (Material 3 Dark)
-                        mdSysColorBackground: '#000000',
-                        mdSysColorSurface: '#0B192C', // Provided Navy
-                        mdSysColorSurfaceVariant: '#1E3E62', // Provided Lighter Navy
-                        mdSysColorOnSurface: '#E6E1E5',
-                        mdSysColorOnSurfaceVariant: '#CAC4D0',
-                        mdSysColorOutline: '#938F99',
-                        
-                        // Status
-                        mdSysColorError: '#FFB4AB',
-                        mdSysColorOnError: '#690005',
+                        dodOrange: '#FF6500', 
+                        dodGreen: '#22C55E',  
+                        dodBg: '#000000',
+                        dodCard: '#0B192C',   // Deep Navy
+                        dodInput: '#1E3E62',  // Light Navy
+                        dodText: '#e5e7eb',
+                        dodSub: '#9ca3af',
                     },
                     fontFamily: {
                         sans: ['Roboto', 'sans-serif'],
                         mono: ['Roboto Mono', 'monospace'],
                     },
-                    borderRadius: {
-                        'xs': '4px',
-                        'sm': '8px',
-                        'md': '12px',
-                        'lg': '16px',
-                        'xl': '28px', // M3 Card
-                        '2xl': '32px',
-                        'full': '9999px',
-                    },
                     boxShadow: {
-                        'elevation-1': '0px 1px 2px 0px rgba(0,0,0,0.3), 0px 1px 3px 1px rgba(0,0,0,0.15)',
-                        'elevation-2': '0px 1px 2px 0px rgba(0,0,0,0.3), 0px 2px 6px 2px rgba(0,0,0,0.15)',
-                        'elevation-3': '0px 4px 8px 3px rgba(0,0,0,0.15), 0px 1px 3px 0px rgba(0,0,0,0.3)',
+                        'glow': '0 0 20px rgba(255, 101, 0, 0.15)',
+                    },
+                    transitionProperty: {
+                        'height': 'height',
+                        'spacing': 'margin, padding',
+                        'all': 'all',
                     }
                 }
             }
@@ -118,13 +94,6 @@
         input, select, button, textarea { outline: none; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        
-        /* M3 Ripple Simulation */
-        .ripple { position: relative; overflow: hidden; transform: translate3d(0, 0, 0); }
-        .ripple:after { content: ""; display: block; position: absolute; width: 100%; height: 100%; top: 0; left: 0; pointer-events: none; background-image: radial-gradient(circle, #fff 10%, transparent 10.01%); background-repeat: no-repeat; background-position: 50%; transform: scale(10, 10); opacity: 0; transition: transform .5s, opacity 1s; }
-        .ripple:active:after { transform: scale(0, 0); opacity: .2; transition: 0s; }
-
-        /* Animations */
         .fade-in { animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
@@ -146,15 +115,15 @@
         // --- COMPONENTS ---
 
         const SetupScreen = ({ error }) => (
-            <div className="min-h-screen bg-mdSysColorBackground flex flex-col items-center justify-center p-6 text-center">
-                <i className="ph-fill ph-warning text-5xl text-mdSysColorPrimary mb-4"></i>
-                <h1 className="text-3xl font-medium text-mdSysColorOnSurface mb-2">Connection Issue</h1>
-                <p className="text-mdSysColorOnSurfaceVariant mb-6 text-sm">{error?.message || "Could not connect to Firebase."}</p>
+            <div className="min-h-screen bg-dodBg flex flex-col items-center justify-center p-6 text-center">
+                <i className="ph-fill ph-warning text-5xl text-dodOrange mb-4"></i>
+                <h1 className="text-3xl font-medium text-white mb-2">Connection Issue</h1>
+                <p className="text-gray-400 mb-6 text-sm">{error?.message || "Could not connect to Firebase."}</p>
             </div>
         );
 
-        // 1. M3 STOPWATCH CARD
-        const Stopwatch = ({ label, colorClass, borderClass }) => {
+        // 1. SMOOTH MORPHING STOPWATCH
+        const Stopwatch = ({ label, themeColor, isCompact }) => {
             const [time, setTime] = useState(0);
             const [isRunning, setIsRunning] = useState(false);
             const timerRef = useRef(null);
@@ -181,25 +150,45 @@
             
             const decis = Math.floor((time % 1000) / 100);
 
+            // Dynamic styles based on theme
+            const bgColor = themeColor === 'dodOrange' ? 'bg-dodOrange/20' : 'bg-dodGreen/20';
+            const borderColor = themeColor === 'dodOrange' ? 'border-dodOrange' : 'border-dodGreen';
+            const textColor = themeColor === 'dodOrange' ? 'text-dodOrange' : 'text-dodGreen';
+
             return (
-                <div onClick={toggle} className={`flex-1 mx-2 py-8 px-2 rounded-xl flex flex-col items-center justify-center cursor-pointer transition-all active:scale-95 border border-mdSysColorSurfaceVariant bg-mdSysColorSurface relative overflow-hidden group ${isRunning ? 'ring-2 ' + borderClass : ''}`}>
-                    {isRunning && <div className={`absolute inset-0 opacity-5 pointer-events-none ${colorClass.replace('text-', 'bg-')}`}></div>}
+                <div 
+                    onClick={toggle} 
+                    className={`
+                        flex-1 mx-1 rounded-2xl flex flex-col items-center justify-center cursor-pointer 
+                        transition-all duration-500 ease-in-out border overflow-hidden relative
+                        ${isCompact ? 'py-2 px-3 flex-row justify-between bg-black/80 backdrop-blur-md' : 'py-6 px-2 bg-opacity-20'}
+                        ${isRunning ? `${bgColor} ${borderColor} shadow-[0_0_15px_rgba(0,0,0,0.3)]` : 'bg-dodCard border-dodInput'}
+                    `}
+                >
+                    {/* Background Tint for Colorfulness */}
+                    {!isCompact && !isRunning && <div className={`absolute inset-0 opacity-5 ${themeColor === 'dodOrange' ? 'bg-dodOrange' : 'bg-dodGreen'}`}></div>}
+
+                    <span className={`font-bold tracking-widest uppercase transition-all duration-500 ${isCompact ? 'text-[10px] mb-0' : 'text-xs mb-1'} ${textColor}`}>
+                        {isCompact ? label.substring(0,3) : label}
+                    </span>
                     
-                    <span className={`text-xs font-medium tracking-wider uppercase mb-1 ${colorClass}`}>{label}</span>
-                    <div className={`text-5xl font-mono font-medium tracking-tighter tabular-nums flex items-baseline ${isRunning ? 'text-mdSysColorOnSurface' : 'text-mdSysColorOutline'}`}>
-                        {format(time)}<span className="text-2xl opacity-50 font-normal">.{decis}</span>
+                    <div className={`font-mono font-bold tracking-tighter tabular-nums flex items-baseline transition-all duration-500 ${isCompact ? 'text-xl' : 'text-5xl'} ${isRunning ? 'text-white' : 'text-gray-400'}`}>
+                        {format(time)}
+                        <span className={`transition-all duration-500 ${isCompact ? 'text-[0px] opacity-0 w-0' : 'text-2xl opacity-50 w-auto'}`}>.{decis}</span>
                     </div>
                     
-                    <div className={`mt-3 flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest transition-colors ${isRunning ? `bg-mdSysColorOnSurface text-mdSysColorSurface` : 'bg-mdSysColorSurfaceVariant text-mdSysColorOnSurfaceVariant'}`}>
-                        <i className={`ph-fill ${isRunning ? 'ph-stop' : 'ph-play'}`}></i>
-                        {isRunning ? 'Reset' : 'Start'}
+                    {/* Buttons Fade Out on Scroll */}
+                    <div className={`overflow-hidden transition-all duration-500 ${isCompact ? 'h-0 opacity-0 mt-0' : 'h-8 opacity-100 mt-3'}`}>
+                        <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest whitespace-nowrap ${isRunning ? 'bg-white text-dodCard' : 'bg-dodInput text-gray-400'}`}>
+                            {isRunning ? 'Reset' : 'Start'}
+                        </div>
                     </div>
                 </div>
             );
         };
 
-        // 2. EXERCISE CARD (M3 Style)
-        const ExerciseRow = ({ exercise, exIndex, updateExercise, deleteExercise, suggestionList, isExpanded, onToggleExpand, userKey, allHistory }) => {
+        // 2. EXERCISE ROW
+        const ExerciseRow = ({ exercise, exIndex, updateExercise, deleteExercise, suggestionList, isExpanded, onToggleExpand, userKey, allHistory, themeBg, themeBorder }) => {
             const [showRemark, setShowRemark] = useState(!!exercise.remark);
             const [showSuggestions, setShowSuggestions] = useState(false);
             const [showNotesHistory, setShowNotesHistory] = useState(false);
@@ -233,36 +222,39 @@
             const removeSet = (sIndex) => updateExercise(exIndex, { ...exercise, sets: exercise.sets.filter((_, i) => i !== sIndex) });
             const handleNameSelect = (name) => { updateExercise(exIndex, { ...exercise, name: name }); setShowSuggestions(false); };
 
+            // COLLAPSED
             if (!isExpanded) {
                 return (
-                    <div onClick={onToggleExpand} className="mb-3 bg-mdSysColorSurface rounded-lg p-4 border border-mdSysColorSurfaceVariant cursor-pointer ripple flex justify-between items-center shadow-elevation-1">
+                    <div onClick={onToggleExpand} className={`mb-3 rounded-xl p-4 border cursor-pointer flex justify-between items-center shadow-lg transition-colors ${themeBg} ${themeBorder} bg-opacity-20`}>
                         <div>
-                            <h3 className="text-mdSysColorOnSurface font-medium text-base">{exercise.name || "New Exercise"}</h3>
-                            <p className="text-xs text-mdSysColorOnSurfaceVariant mt-0.5">{exercise.sets?.length || 0} Sets</p>
+                            <h3 className="text-white font-bold text-lg">{exercise.name || "New Exercise"}</h3>
+                            <p className="text-xs text-gray-300 mt-0.5 font-mono">{exercise.sets?.length || 0} Sets</p>
                         </div>
-                        <i className="ph-bold ph-caret-down text-mdSysColorOnSurfaceVariant text-xl"></i>
+                        <i className="ph-bold ph-caret-down text-white/50 text-xl"></i>
                     </div>
                 );
             }
 
+            // EXPANDED
             return (
-                <div className="mb-4 bg-mdSysColorSurface rounded-xl border border-mdSysColorSurfaceVariant overflow-visible shadow-elevation-2 fade-in">
-                    <div className="flex justify-between items-center p-4 border-b border-mdSysColorSurfaceVariant bg-mdSysColorSurfaceVariant/30 rounded-t-xl cursor-pointer" onClick={onToggleExpand}>
-                        <div className="flex-1 mr-4 relative" onClick={e => e.stopPropagation()}>
-                            <div className="relative">
+                <div className={`mb-4 rounded-2xl border overflow-visible shadow-xl fade-in ${themeBg} ${themeBorder} bg-opacity-20`}>
+                    {/* Header */}
+                    <div className="flex justify-between items-center p-4 border-b border-white/10 bg-black/20 rounded-t-2xl cursor-pointer" onClick={onToggleExpand}>
+                        <div className="flex-1 mr-4 relative">
+                            <div className="relative" onClick={(e) => e.stopPropagation()}>
                                 <input 
                                     value={exercise.name}
                                     onChange={(e) => { updateExercise(exIndex, {...exercise, name: e.target.value}); setShowSuggestions(true); }}
                                     onFocus={() => setShowSuggestions(true)}
                                     onBlur={() => setTimeout(() => setShowSuggestions(false), 200)} 
-                                    className="w-full bg-transparent text-xl font-normal text-mdSysColorOnSurface placeholder-mdSysColorOutline border-none p-0 focus:ring-0"
+                                    className="w-full bg-transparent text-xl font-bold text-white placeholder-white/30 border-none p-0 focus:ring-0"
                                     placeholder="Exercise Name"
                                     autoComplete="off"
                                 />
                                 {showSuggestions && filteredSuggestions.length > 0 && (
-                                    <ul className="absolute left-0 top-full w-full bg-mdSysColorSurfaceVariant border border-mdSysColorOutline rounded-md mt-2 shadow-elevation-3 z-50 max-h-48 overflow-y-auto">
+                                    <ul className="absolute left-0 top-full w-full bg-dodCard border border-dodInput rounded-lg mt-2 shadow-2xl z-50 max-h-48 overflow-y-auto">
                                         {filteredSuggestions.map((suggestion, i) => (
-                                            <li key={i} onMouseDown={(e) => { e.preventDefault(); handleNameSelect(suggestion); }} className="px-4 py-3 text-sm text-mdSysColorOnSurface hover:bg-white/5 cursor-pointer">
+                                            <li key={i} onMouseDown={(e) => { e.preventDefault(); handleNameSelect(suggestion); }} className="px-4 py-3 text-sm text-white hover:bg-white/10 cursor-pointer border-b border-white/5 last:border-0">
                                                 {suggestion}
                                             </li>
                                         ))}
@@ -270,29 +262,30 @@
                                 )}
                             </div>
                         </div>
-                        <div className="flex gap-1" onClick={e => e.stopPropagation()}>
-                            <button onClick={() => setShowNotesHistory(!showNotesHistory)} className={`p-2 rounded-full ${showNotesHistory ? 'bg-mdSysColorPrimaryContainer text-mdSysColorOnPrimaryContainer' : 'text-mdSysColorOnSurfaceVariant hover:bg-mdSysColorSurfaceVariant'}`}>
+                        <div className="flex gap-2" onClick={e => e.stopPropagation()}>
+                            <button onClick={() => setShowNotesHistory(!showNotesHistory)} className={`p-2 rounded-full ${showNotesHistory ? 'bg-white text-black' : 'text-white/60 hover:bg-white/10'}`}>
                                 <i className="ph-bold ph-clock-counter-clockwise text-lg"></i>
                             </button>
-                            <button onClick={() => setShowRemark(!showRemark)} className={`p-2 rounded-full ${exercise.remark ? 'bg-mdSysColorSecondaryContainer text-mdSysColorOnSecondaryContainer' : 'text-mdSysColorOnSurfaceVariant hover:bg-mdSysColorSurfaceVariant'}`}>
+                            <button onClick={() => setShowRemark(!showRemark)} className={`p-2 rounded-full ${exercise.remark ? 'bg-white text-black' : 'text-white/60 hover:bg-white/10'}`}>
                                 <i className="ph-bold ph-notebook text-lg"></i>
                             </button>
-                            <button onClick={() => deleteExercise(exIndex)} className="p-2 text-mdSysColorError hover:bg-mdSysColorError/10 rounded-full">
+                            <button onClick={() => deleteExercise(exIndex)} className="p-2 text-red-400 hover:bg-red-400/20 rounded-full">
                                 <i className="ph-bold ph-trash text-lg"></i>
                             </button>
-                            <button className="p-2 text-mdSysColorOnSurfaceVariant rounded-full">
+                            <button onClick={onToggleExpand} className="p-2 text-white/60 rounded-full hover:bg-white/10">
                                 <i className="ph-bold ph-caret-up text-lg"></i>
                             </button>
                         </div>
                     </div>
                     
+                    {/* Notes History */}
                     {showNotesHistory && (
-                        <div className="bg-mdSysColorSurfaceVariant/20 p-4 max-h-40 overflow-y-auto border-b border-mdSysColorSurfaceVariant">
-                            <h4 className="text-xs text-mdSysColorPrimary font-medium mb-2 uppercase tracking-wide">Past Notes</h4>
-                            {pastNotes.length === 0 ? <p className="text-sm text-mdSysColorOnSurfaceVariant italic">No previous notes.</p> : 
+                        <div className="bg-black/30 p-4 max-h-40 overflow-y-auto border-b border-white/10">
+                            <h4 className="text-xs text-white/50 font-bold mb-2 uppercase tracking-wide">History</h4>
+                            {pastNotes.length === 0 ? <p className="text-sm text-white/30 italic">No notes.</p> : 
                                 pastNotes.map((n, i) => (
-                                    <div key={i} className="mb-2 text-sm text-mdSysColorOnSurfaceVariant border-l-2 border-mdSysColorPrimary/50 pl-2">
-                                        <span className="text-mdSysColorOnSurface font-medium text-xs block opacity-70">{n.date}</span>
+                                    <div key={i} className="mb-2 text-sm text-gray-300 border-l-2 border-white/30 pl-2">
+                                        <span className="text-white font-bold text-xs block opacity-70">{n.date}</span>
                                         {n.remark}
                                     </div>
                                 ))
@@ -300,20 +293,22 @@
                         </div>
                     )}
 
+                    {/* Remark Input */}
                     {showRemark && (
-                        <div className="px-4 py-3 bg-mdSysColorSurfaceVariant/20 border-b border-mdSysColorSurfaceVariant">
+                        <div className="px-4 py-3 bg-black/20 border-b border-white/10">
                             <textarea
                                 value={exercise.remark || ""}
                                 onChange={(e) => updateExercise(exIndex, {...exercise, remark: e.target.value})}
                                 placeholder="Add note..."
-                                className="w-full bg-transparent text-sm text-mdSysColorOnSurface placeholder-mdSysColorOutline resize-none h-auto focus:ring-0 border-none p-0"
+                                className="w-full bg-transparent text-sm text-white placeholder-white/30 resize-none h-auto focus:ring-0 border-none p-0"
                                 rows="1"
                             />
                         </div>
                     )}
                     
+                    {/* Sets */}
                     <div className="p-4 space-y-3">
-                        <div className="flex px-1 text-xs font-medium text-mdSysColorOnSurfaceVariant/80 tracking-wide">
+                        <div className="flex px-1 text-[10px] font-bold text-white/40 tracking-wider">
                             <div className="w-8 text-center">#</div>
                             <div className="flex-1 pl-2">KG</div>
                             <div className="flex-1 pl-2">REPS</div>
@@ -323,25 +318,25 @@
                         
                         {(exercise.sets || []).map((set, sIndex) => (
                             <div key={sIndex} className="flex gap-3 items-center">
-                                <span className="text-mdSysColorOnSurfaceVariant text-sm w-8 text-center font-mono opacity-60">{sIndex + 1}</span>
-                                <div className="flex-1 relative bg-mdSysColorSurfaceVariant rounded-t-sm border-b border-mdSysColorOutline focus-within:border-mdSysColorPrimary transition-colors">
-                                    <input type="number" value={set.weight} onChange={(e) => updateSet(sIndex, 'weight', e.target.value)} className="w-full bg-transparent p-2 text-mdSysColorOnSurface font-mono text-base border-none focus:ring-0 placeholder-white/10" placeholder="0" />
+                                <span className="text-white/40 text-sm w-8 text-center font-mono">{sIndex + 1}</span>
+                                <div className="flex-1 relative bg-black/20 rounded-lg border border-white/10 focus-within:border-white/50 transition-colors">
+                                    <input type="number" value={set.weight} onChange={(e) => updateSet(sIndex, 'weight', e.target.value)} className="w-full bg-transparent p-2 text-white font-mono text-base border-none focus:ring-0 placeholder-white/10 text-center" placeholder="0" />
                                 </div>
-                                <div className="flex-1 relative bg-mdSysColorSurfaceVariant rounded-t-sm border-b border-mdSysColorOutline focus-within:border-mdSysColorPrimary transition-colors">
-                                    <input type="number" value={set.reps} onChange={(e) => updateSet(sIndex, 'reps', e.target.value)} className="w-full bg-transparent p-2 text-mdSysColorOnSurface font-mono text-base border-none focus:ring-0 placeholder-white/10" placeholder="0" />
+                                <div className="flex-1 relative bg-black/20 rounded-lg border border-white/10 focus-within:border-white/50 transition-colors">
+                                    <input type="number" value={set.reps} onChange={(e) => updateSet(sIndex, 'reps', e.target.value)} className="w-full bg-transparent p-2 text-white font-mono text-base border-none focus:ring-0 placeholder-white/10 text-center" placeholder="0" />
                                 </div>
                                 <div className="w-12 flex justify-center">
-                                    <button onClick={() => updateSet(sIndex, 'uni', !set.uni)} className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all ${set.uni ? 'bg-mdSysColorPrimary text-mdSysColorOnPrimary border-transparent' : 'bg-transparent border-mdSysColorOutline text-mdSysColorOutline'}`}>
+                                    <button onClick={() => updateSet(sIndex, 'uni', !set.uni)} className={`w-8 h-8 rounded-lg flex items-center justify-center border transition-all ${set.uni ? 'bg-white text-black border-white' : 'bg-transparent border-white/20 text-white/30'}`}>
                                         <span className="text-[10px] font-bold">1</span>
                                     </button>
                                 </div>
-                                <button onClick={() => removeSet(sIndex)} className="text-mdSysColorOutline hover:text-mdSysColorError w-8 flex justify-center">
+                                <button onClick={() => removeSet(sIndex)} className="text-white/30 hover:text-red-400 w-8 flex justify-center">
                                     <i className="ph-bold ph-x text-lg"></i>
                                 </button>
                             </div>
                         ))}
                         
-                        <button onClick={addSet} className="w-full py-3 mt-2 text-sm font-medium text-mdSysColorPrimary bg-mdSysColorSurfaceVariant/30 rounded-full hover:bg-mdSysColorSurfaceVariant/50 transition-colors flex items-center justify-center gap-2 ripple">
+                        <button onClick={addSet} className="w-full py-3 mt-2 text-sm font-bold text-white bg-white/10 rounded-xl hover:bg-white/20 transition-colors flex items-center justify-center gap-2 ripple">
                             <i className="ph-bold ph-plus"></i> Add Set
                         </button>
                     </div>
@@ -350,7 +345,7 @@
         };
 
         // 3. WORKOUT LOGGER
-        const WorkoutLogger = ({ userKey, allHistory }) => {
+        const WorkoutLogger = ({ userKey, allHistory, themeBg, themeBorder, themeText }) => {
             const [split, setSplit] = useState("");
             const [bodyWeight, setBodyWeight] = useState("");
             const [exercises, setExercises] = useState([]);
@@ -402,28 +397,27 @@
 
             return (
                 <div className="pt-2 fade-in">
-                    {/* Controls Card */}
-                    <div className="bg-mdSysColorSurface p-5 rounded-xl border border-mdSysColorSurfaceVariant mb-6 shadow-elevation-1">
+                    {/* Today's Focus Card - Colorful */}
+                    <div className="bg-dodInput p-5 rounded-2xl border border-white/5 mb-6">
                         <div className="mb-5">
-                            <label className="text-xs font-medium text-mdSysColorPrimary tracking-wider uppercase mb-3 block">Today's Focus (Shared)</label>
+                            <label className={`text-xs font-bold ${themeText} tracking-wider uppercase mb-3 block`}>Today's Focus (Shared)</label>
                             <div className="flex flex-wrap gap-2">
                                 {splits.map(s => (
-                                    <button key={s} onClick={() => updateSharedSplit(s)} className={`px-4 py-1.5 rounded-lg text-sm font-medium border transition-all ${split === s ? `bg-mdSysColorPrimaryContainer text-mdSysColorOnPrimaryContainer border-mdSysColorPrimaryContainer` : 'border-mdSysColorOutline text-mdSysColorOnSurfaceVariant hover:bg-white/5'}`}>
+                                    <button key={s} onClick={() => updateSharedSplit(s)} className={`px-4 py-1.5 rounded-lg text-sm font-bold border transition-all ${split === s ? `bg-white text-black border-white` : 'border-white/10 text-gray-400 hover:bg-white/5'}`}>
                                         {s}
                                     </button>
                                 ))}
                             </div>
                         </div>
                         <div>
-                            <label className="text-xs font-medium text-mdSysColorPrimary tracking-wider uppercase mb-2 block">Body Weight</label>
-                            <div className="bg-mdSysColorSurfaceVariant rounded-t-sm border-b border-mdSysColorOutline focus-within:border-mdSysColorPrimary relative">
-                                <input type="number" value={bodyWeight} onChange={(e) => { setBodyWeight(e.target.value); updatePersonalData({bodyWeight: e.target.value}); }} placeholder="0.0" className="w-full bg-transparent p-3 text-mdSysColorOnSurface font-mono text-lg border-none focus:ring-0" />
-                                <span className="absolute right-3 top-3.5 text-sm text-mdSysColorOnSurfaceVariant">kg</span>
+                            <label className={`text-xs font-bold ${themeText} tracking-wider uppercase mb-2 block`}>Body Weight</label>
+                            <div className="bg-black/20 rounded-lg border border-white/10 focus-within:border-white relative">
+                                <input type="number" value={bodyWeight} onChange={(e) => { setBodyWeight(e.target.value); updatePersonalData({bodyWeight: e.target.value}); }} placeholder="0.0" className="w-full bg-transparent p-3 text-white font-mono text-lg border-none focus:ring-0" />
+                                <span className="absolute right-3 top-3.5 text-sm text-gray-500">kg</span>
                             </div>
                         </div>
                     </div>
 
-                    {/* Exercises */}
                     <div>
                         {exercises.map((ex, i) => (
                             <ExerciseRow 
@@ -432,17 +426,17 @@
                                 suggestionList={suggestionList} isExpanded={i === expandedIndex} 
                                 onToggleExpand={() => setExpandedIndex(i === expandedIndex ? -1 : i)} 
                                 userKey={userKey} allHistory={allHistory} 
+                                themeBg={themeBg} themeBorder={themeBorder}
                             />
                         ))}
                     </div>
 
-                    {/* Extended FAB */}
-                    <button onClick={handleAddExercise} className="fixed bottom-28 right-4 h-14 pl-4 pr-6 rounded-2xl bg-mdSysColorPrimaryContainer text-mdSysColorOnPrimaryContainer shadow-elevation-3 flex items-center gap-2 font-medium transition-transform active:scale-95 z-40">
+                    <button onClick={handleAddExercise} className={`fixed bottom-20 right-4 h-14 pl-4 pr-6 rounded-2xl bg-white text-black shadow-2xl flex items-center gap-2 font-bold transition-transform active:scale-95 z-40`}>
                         <i className="ph-bold ph-plus text-2xl"></i>
                         <span>New Exercise</span>
                     </button>
 
-                    {status && <div className="fixed bottom-28 left-4 bg-mdSysColorSurfaceVariant text-mdSysColorOnSurfaceVariant px-4 py-2 rounded-lg text-xs font-medium shadow-elevation-2 flex items-center gap-2 fade-in"><i className="ph-fill ph-check-circle text-mdSysColorPrimary"></i> {status}</div>}
+                    {status && <div className="fixed bottom-20 left-4 bg-dodInput text-white px-4 py-2 rounded-lg text-xs font-bold shadow-lg flex items-center gap-2 fade-in backdrop-blur-md border border-white/10"><i className={`ph-fill ph-check-circle ${themeText}`}></i> {status}</div>}
                 </div>
             );
         };
@@ -473,45 +467,43 @@
             }, [searchTerm, historyData, dates]);
 
             return (
-                <div className="pt-2 fade-in">
-                    {/* Search M3 Style */}
-                    <div className="bg-mdSysColorSurfaceVariant/40 rounded-full h-12 flex items-center px-4 mb-4 mx-1">
-                        <i className="ph-bold ph-magnifying-glass text-mdSysColorOnSurfaceVariant text-xl"></i>
-                        <input list="history-search" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search exercises..." className="bg-transparent border-none w-full ml-3 text-mdSysColorOnSurface placeholder-mdSysColorOutline focus:ring-0 h-full" />
-                        {searchTerm && <button onClick={() => setSearchTerm("")}><i className="ph-bold ph-x-circle text-mdSysColorOnSurfaceVariant text-xl"></i></button>}
+                <div className="pb-28 space-y-4 pt-2 fade-in">
+                    <div className="bg-dodInput rounded-full h-12 flex items-center px-4 mb-4 mx-1">
+                        <i className="ph-bold ph-magnifying-glass text-gray-400 text-xl"></i>
+                        <input list="history-search" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search exercises..." className="bg-transparent border-none w-full ml-3 text-white placeholder-gray-500 focus:ring-0 h-full" />
+                        {searchTerm && <button onClick={() => setSearchTerm("")}><i className="ph-bold ph-x-circle text-gray-400 text-xl"></i></button>}
                         <datalist id="history-search">{allExerciseNames.map((name, i) => <option key={i} value={name} />)}</datalist>
                     </div>
 
-                    {/* SEARCH RESULTS */}
                     {searchTerm && searchResults && (
                         <div className="grid grid-cols-2 gap-3 px-1">
                             {['raghendh', 'devanandh'].map(u => (
                                 <div key={u}>
-                                    <div className={`text-xs font-bold uppercase mb-3 tracking-widest text-center pb-1 border-b-2 ${u === 'raghendh' ? 'text-mdSysColorPrimary border-mdSysColorPrimary' : 'text-mdSysColorSecondary border-mdSysColorSecondary'}`}>{u}</div>
+                                    <div className={`text-xs font-bold uppercase mb-3 tracking-widest text-center pb-1 border-b-2 ${u === 'raghendh' ? 'text-dodOrange border-dodOrange' : 'text-dodGreen border-dodGreen'}`}>{u}</div>
                                     <div className="space-y-3">
-                                        {searchResults[u].length === 0 && <div className="text-mdSysColorOutline text-xs text-center italic">No records</div>}
+                                        {searchResults[u].length === 0 && <div className="text-gray-500 text-xs text-center italic">No records</div>}
                                         {searchResults[u].map((item, i) => {
                                             const id = `${u}-${i}`;
                                             return (
-                                                <div key={i} className="bg-mdSysColorSurface p-3 rounded-xl border border-mdSysColorSurfaceVariant">
+                                                <div key={i} className={`p-3 rounded-xl border border-white/10 ${u === 'raghendh' ? 'bg-dodOrange/10' : 'bg-dodGreen/10'}`}>
                                                     <div className="flex justify-between items-baseline mb-2">
-                                                        <span className="text-xs font-bold text-mdSysColorOnSurfaceVariant">{item.date}</span>
-                                                        {item.bw && <span className="text-[10px] bg-mdSysColorSurfaceVariant px-1.5 rounded text-mdSysColorOnSurfaceVariant">BW: {item.bw}</span>}
+                                                        <span className="text-xs font-bold text-white/50">{item.date}</span>
+                                                        {item.bw && <span className="text-[10px] bg-white/10 px-1.5 rounded text-white/70">BW: {item.bw}</span>}
                                                     </div>
                                                     <div className="space-y-1">
                                                         {item.exercise.sets?.map((set, si) => (
-                                                            <div key={si} className="text-base font-bold text-mdSysColorOnSurface font-mono flex justify-between">
+                                                            <div key={si} className="text-base font-bold text-white font-mono flex justify-between">
                                                                 <span>{set.weight}kg x {set.reps}</span>
-                                                                {set.uni && <span className="text-[9px] text-mdSysColorPrimary bg-mdSysColorPrimaryContainer px-1 rounded">UNI</span>}
+                                                                {set.uni && <span className="text-[9px] text-white bg-white/20 px-1 rounded">UNI</span>}
                                                             </div>
                                                         ))}
                                                     </div>
                                                     {item.exercise.remark && (
-                                                        <div className="mt-2 pt-2 border-t border-mdSysColorSurfaceVariant">
-                                                            <button onClick={() => toggleRemark(id)} className="text-xs flex items-center gap-1 text-mdSysColorSecondary hover:text-white">
+                                                        <div className="mt-2 pt-2 border-t border-white/10">
+                                                            <button onClick={() => toggleRemark(id)} className="text-xs flex items-center gap-1 text-white hover:text-gray-300">
                                                                 <i className="ph-fill ph-chat-text"></i> {viewRemarks[id] ? "Hide Note" : "Note"}
                                                             </button>
-                                                            {viewRemarks[id] && <div className="mt-1 text-xs text-mdSysColorOnSurfaceVariant italic bg-mdSysColorSurfaceVariant/30 p-1 rounded">{item.exercise.remark}</div>}
+                                                            {viewRemarks[id] && <div className="mt-1 text-xs text-gray-300 italic bg-white/10 p-1 rounded">{item.exercise.remark}</div>}
                                                         </div>
                                                     )}
                                                 </div>
@@ -523,7 +515,6 @@
                         </div>
                     )}
 
-                    {/* HISTORY ACCORDION */}
                     {!searchTerm && dates.map(dateStr => {
                         const dayData = historyData[dateStr];
                         if (!dayData) return null;
@@ -531,49 +522,49 @@
                         const splitName = dayData.split || dayData.raghendh?.split || dayData.devanandh?.split || '-';
 
                         return (
-                            <div key={dateStr} className={`bg-mdSysColorSurface mx-1 rounded-xl overflow-hidden mb-2 border border-mdSysColorSurfaceVariant transition-all ${isExpanded ? 'ring-1 ring-mdSysColorOutline' : ''}`}>
+                            <div key={dateStr} className={`bg-dodCard mx-1 rounded-xl overflow-hidden mb-2 border border-dodInput transition-all ${isExpanded ? 'ring-1 ring-gray-600' : ''}`}>
                                 <div className="p-4 flex justify-between items-center cursor-pointer hover:bg-white/5" onClick={() => setExpandedDay(isExpanded ? null : dateStr)}>
                                     <div>
-                                        <h3 className="text-base font-bold text-mdSysColorOnSurface">{dateStr}</h3>
-                                        <p className="text-xs text-mdSysColorPrimary font-medium uppercase tracking-wider mt-0.5">{splitName}</p>
+                                        <h3 className="text-base font-bold text-white">{dateStr}</h3>
+                                        <p className="text-xs text-dodOrange font-medium uppercase tracking-wider mt-0.5">{splitName}</p>
                                     </div>
-                                    <i className={`ph-bold ph-caret-${isExpanded ? 'up' : 'down'} text-mdSysColorOnSurfaceVariant`}></i>
+                                    <i className={`ph-bold ph-caret-${isExpanded ? 'up' : 'down'} text-gray-400`}></i>
                                 </div>
 
                                 {isExpanded && (
-                                    <div className="grid grid-cols-2 divide-x divide-mdSysColorSurfaceVariant border-t border-mdSysColorSurfaceVariant bg-mdSysColorSurfaceVariant/10 fade-in">
+                                    <div className="grid grid-cols-2 divide-x divide-dodInput border-t border-dodInput bg-black/20 fade-in">
                                         {['raghendh', 'devanandh'].map(u => {
                                             const uData = dayData[u];
-                                            const color = u === 'raghendh' ? 'text-mdSysColorPrimary' : 'text-mdSysColorSecondary';
+                                            const color = u === 'raghendh' ? 'text-dodOrange' : 'text-dodGreen';
                                             return (
                                                 <div key={u} className="p-3">
                                                     <div className={`text-xs font-black uppercase mb-3 tracking-widest ${color}`}>{u}</div>
-                                                    {uData?.bodyWeight && <div className="text-xs mb-3 text-mdSysColorOnSurfaceVariant bg-mdSysColorSurfaceVariant inline-block px-2 py-0.5 rounded-sm">BW: {uData.bodyWeight}kg</div>}
+                                                    {uData?.bodyWeight && <div className="text-xs mb-3 text-white bg-white/10 inline-block px-2 py-0.5 rounded-sm">BW: {uData.bodyWeight}kg</div>}
                                                     
                                                     <div className="space-y-4">
                                                         {(uData?.exercises || []).map((ex, i) => {
                                                             const id = `${dateStr}-${u}-${i}`;
                                                             return (
                                                                 <div key={i}>
-                                                                    <div className="text-sm font-bold text-mdSysColorOnSurface uppercase mb-1 truncate">{ex.name}</div>
+                                                                    <div className="text-sm font-bold text-white uppercase mb-1 truncate">{ex.name}</div>
                                                                     <div className="space-y-0.5">
                                                                         {(ex.sets || []).map((s, si) => (
-                                                                            <div key={si} className="text-base font-mono font-medium text-mdSysColorOnSurfaceVariant flex justify-between items-center pr-1">
+                                                                            <div key={si} className="text-base font-mono font-medium text-gray-300 flex justify-between items-center pr-1">
                                                                                 <span>{s.weight}kg x {s.reps}</span>
-                                                                                {s.uni && <span className="text-[8px] text-mdSysColorPrimary border border-mdSysColorPrimary/50 px-0.5 rounded">U</span>}
+                                                                                {s.uni && <span className="text-[8px] text-white border border-white px-0.5 rounded">U</span>}
                                                                             </div>
                                                                         ))}
                                                                     </div>
                                                                     {ex.remark && (
-                                                                        <button onClick={() => toggleRemark(id)} className="mt-1 text-xs text-mdSysColorSecondary hover:text-white flex items-center gap-1">
+                                                                        <button onClick={() => toggleRemark(id)} className="mt-1 text-xs text-white/70 hover:text-white flex items-center gap-1">
                                                                             <i className="ph-fill ph-note"></i> Note
                                                                         </button>
                                                                     )}
-                                                                    {viewRemarks[id] && <div className="text-xs text-mdSysColorOnSurfaceVariant italic mt-1 pl-2 border-l-2 border-mdSysColorSurfaceVariant">{ex.remark}</div>}
+                                                                    {viewRemarks[id] && <div className="text-xs text-gray-400 italic mt-1 pl-2 border-l-2 border-white/20">{ex.remark}</div>}
                                                                 </div>
                                                             );
                                                         })}
-                                                        {!uData?.exercises && <div className="text-xs text-mdSysColorOutline italic">Rest Day</div>}
+                                                        {!uData?.exercises && <div className="text-xs text-gray-600 italic">Rest Day</div>}
                                                     </div>
                                                 </div>
                                             );
@@ -587,37 +578,57 @@
             );
         };
 
-        // 5. LIBRARY PAGE
+        // 5. LIBRARY PAGE (Fixed Duplicates)
         const LibraryPage = ({ historyData }) => {
             const [selectedSplit, setSelectedSplit] = useState("Push");
             const splits = ["Push", "Pull", "Legs", "Upper", "Lower", "Full Body", "Cardio", "Arms", "Abs"];
             const exercises = useMemo(() => {
-                const uniqueEx = new Set();
-                if(historyData) Object.values(historyData).forEach(day => {
-                    const daySplit = day.split || day.raghendh?.split || day.devanandh?.split;
-                    if(daySplit === selectedSplit) ['raghendh', 'devanandh'].forEach(u => day[u]?.exercises?.forEach(e => { if(e.name) uniqueEx.add(e.name) }));
-                });
-                return Array.from(uniqueEx).sort();
+                const uniqueSet = new Set();
+                const displayList = [];
+                
+                if(historyData) {
+                    Object.values(historyData).forEach(day => {
+                        // Check multiple possible split locations
+                        const daySplit = day.split || day.raghendh?.split || day.devanandh?.split;
+                        if(daySplit === selectedSplit) {
+                            ['raghendh', 'devanandh'].forEach(u => {
+                                if(day[u]?.exercises) {
+                                    day[u].exercises.forEach(e => { 
+                                        if(e.name) {
+                                            const clean = e.name.trim();
+                                            const lower = clean.toLowerCase();
+                                            if(!uniqueSet.has(lower)) {
+                                                uniqueSet.add(lower);
+                                                displayList.push(clean);
+                                            }
+                                        }
+                                    });
+                                }
+                            });
+                        }
+                    });
+                }
+                return displayList.sort();
             }, [historyData, selectedSplit]);
 
             return (
-                <div className="pt-2 px-1 fade-in">
-                    <h2 className="text-xl font-medium text-mdSysColorOnSurface mb-4 ml-1">Exercise Library</h2>
+                <div className="pb-28 pt-2 px-1 fade-in">
+                    <h2 className="text-xl font-medium text-white mb-4 ml-1">Exercise Library</h2>
                     <div className="flex flex-wrap gap-2 mb-6">
                         {splits.map(s => (
-                            <button key={s} onClick={() => setSelectedSplit(s)} className={`px-4 py-1.5 rounded-lg text-sm font-medium border transition-all ${selectedSplit === s ? 'bg-mdSysColorPrimaryContainer text-mdSysColorOnPrimaryContainer border-mdSysColorPrimaryContainer' : 'bg-transparent border-mdSysColorOutline text-mdSysColorOnSurfaceVariant'}`}>
+                            <button key={s} onClick={() => setSelectedSplit(s)} className={`px-4 py-1.5 rounded-lg text-sm font-medium border transition-all ${selectedSplit === s ? 'bg-dodOrange border-dodOrange text-white' : 'bg-transparent border-gray-600 text-gray-400'}`}>
                                 {s}
                             </button>
                         ))}
                     </div>
                     
-                    <div className="bg-mdSysColorSurface rounded-xl border border-mdSysColorSurfaceVariant p-4 shadow-elevation-1">
-                        <h3 className="text-mdSysColorPrimary text-xs uppercase tracking-widest font-bold mb-4">{selectedSplit} Exercises ({exercises.length})</h3>
+                    <div className="bg-dodCard rounded-xl border border-dodInput p-4 shadow-sm">
+                        <h3 className="text-dodOrange text-xs uppercase tracking-widest font-bold mb-4">{selectedSplit} Exercises ({exercises.length})</h3>
                         <div className="space-y-3">
-                            {exercises.length === 0 ? <div className="text-mdSysColorOutline italic text-sm">No exercises found for this split.</div> : 
+                            {exercises.length === 0 ? <div className="text-gray-500 italic text-sm">No exercises found for this split.</div> : 
                                 exercises.map((ex, i) => (
-                                    <div key={i} className="py-2 border-b border-mdSysColorSurfaceVariant last:border-0 text-sm text-mdSysColorOnSurface flex items-center gap-3">
-                                        <i className="ph-fill ph-barbell text-mdSysColorPrimary text-lg"></i> {ex}
+                                    <div key={i} className="py-2 border-b border-dodInput last:border-0 text-sm text-white flex items-center gap-3">
+                                        <i className="ph-fill ph-barbell text-dodOrange text-lg"></i> {ex}
                                     </div>
                                 ))
                             }
@@ -633,6 +644,13 @@
             const [isAuth, setIsAuth] = useState(false);
             const [authError, setAuthError] = useState(null);
             const [allHistory, setAllHistory] = useState(null);
+            
+            const [isScrolled, setIsScrolled] = useState(false);
+            const mainRef = useRef(null);
+
+            const handleScroll = (e) => {
+                setIsScrolled(e.target.scrollTop > 50);
+            };
 
             useEffect(() => {
                 if(!window.auth) return;
@@ -645,62 +663,65 @@
 
             if (authError) return <SetupScreen error={authError} />;
             if (!isAuth) return (
-                <div className="h-screen bg-mdSysColorBackground flex flex-col items-center justify-center">
-                    <h1 className="text-6xl font-black text-mdSysColorOnSurface tracking-tighter italic animate-pulse">DOD</h1>
-                    <p className="text-mdSysColorPrimary text-xs font-bold tracking-[0.5em] uppercase mt-2">Loading Gym...</p>
+                <div className="h-screen bg-dodBg flex flex-col items-center justify-center">
+                    <h1 className="text-6xl font-black text-white tracking-tighter italic animate-pulse">DOD</h1>
+                    <p className="text-dodOrange text-xs font-bold tracking-[0.5em] uppercase mt-2">Loading Gym...</p>
                 </div>
             );
 
             return (
-                <div className="max-w-md mx-auto h-screen bg-mdSysColorBackground relative font-sans text-mdSysColorOnSurface overflow-hidden flex flex-col">
+                <div className="max-w-md mx-auto h-screen bg-dodBg relative font-sans text-white overflow-hidden flex flex-col">
                     {/* SCROLLABLE MAIN CONTAINER */}
-                    <main className="flex-1 overflow-y-auto no-scrollbar scroll-smooth">
+                    <main 
+                        ref={mainRef}
+                        onScroll={handleScroll}
+                        className="flex-1 overflow-y-auto no-scrollbar scroll-smooth"
+                    >
                         
-                        {/* HEADER (Now Inside Scroll Flow) */}
-                        <div className="px-4 pt-6 pb-2 bg-mdSysColorBackground">
-                            <div className="flex items-end justify-between mb-4">
+                        {/* HEADER (Sticky) */}
+                        <div className={`sticky top-0 z-30 transition-all duration-300 ${isScrolled ? 'bg-dodBg/90 backdrop-blur-md pt-2 pb-2 shadow-xl' : 'bg-dodBg pt-6 pb-2'}`}>
+                            {/* Title & Date (Hide on Scroll) */}
+                            <div className={`px-4 flex items-end justify-between mb-4 transition-all duration-300 origin-top ${isScrolled ? 'h-0 opacity-0 overflow-hidden mb-0 scale-y-0' : 'h-auto opacity-100 scale-y-100'}`}>
                                 <div>
-                                    <h1 className="text-5xl font-black text-mdSysColorOnSurface leading-none tracking-tighter italic">DOD</h1>
-                                    <p className="text-mdSysColorPrimary text-[0.6rem] font-bold tracking-[0.6em] uppercase pl-1">do or die</p>
+                                    <h1 className="text-5xl font-black text-white leading-none tracking-tighter italic">DOD</h1>
+                                    <p className="text-dodOrange text-[0.6rem] font-bold tracking-[0.6em] uppercase pl-1">do or die</p>
                                 </div>
-                                <div className="text-[10px] font-bold text-mdSysColorOnSurfaceVariant bg-mdSysColorSurface px-3 py-1 rounded-full border border-mdSysColorSurfaceVariant">{getTodayDateString()}</div>
+                                <div className="text-[10px] font-bold text-gray-400 bg-dodInput px-3 py-1 rounded-full border border-dodInput">{getTodayDateString()}</div>
                             </div>
-                            <div className="flex justify-between -mx-2 mb-2">
-                                <Stopwatch label="RAGHENDH" colorClass="text-mdSysColorPrimary" borderClass="border-mdSysColorPrimary" />
-                                <Stopwatch label="DEVANANDH" colorClass="text-mdSysColorSecondary" borderClass="border-mdSysColorSecondary" />
+                            
+                            {/* Stopwatches */}
+                            <div className="flex justify-between -mx-1 px-4">
+                                <Stopwatch label="RAGHENDH" themeColor="dodOrange" isCompact={isScrolled} />
+                                <Stopwatch label="DEVANANDH" themeColor="dodGreen" isCompact={isScrolled} />
                             </div>
                         </div>
 
-                        {/* CONTENT (With Padding Bottom to Clear Nav) */}
+                        {/* CONTENT */}
                         <div className="px-4 pb-32">
-                            {tab === 'raghendh' && <WorkoutLogger userKey="raghendh" allHistory={allHistory} />}
-                            {tab === 'devanandh' && <WorkoutLogger userKey="devanandh" allHistory={allHistory} />}
+                            {tab === 'raghendh' && <WorkoutLogger userKey="raghendh" allHistory={allHistory} themeBg="bg-dodOrange/10" themeBorder="border-dodOrange/50" themeText="text-dodOrange" />}
+                            {tab === 'devanandh' && <WorkoutLogger userKey="devanandh" allHistory={allHistory} themeBg="bg-dodGreen/10" themeBorder="border-dodGreen/50" themeText="text-dodGreen" />}
                             {tab === 'history' && <HistoryPage historyData={allHistory} />}
                             {tab === 'library' && <LibraryPage historyData={allHistory} />}
                         </div>
                     </main>
 
-                    {/* M3 BOTTOM NAVIGATION (Fixed Overlay) */}
-                    <nav className="absolute bottom-0 w-full bg-mdSysColorSurfaceContainer h-20 flex justify-around items-center border-t border-mdSysColorSurfaceVariant z-50 rounded-t-2xl shadow-elevation-3">
+                    {/* BOTTOM NAVIGATION (Solid Opaque Navy) */}
+                    <nav className="absolute bottom-0 w-full bg-dodCard h-14 flex justify-around items-center border-t border-dodInput z-50 shadow-2xl">
                         {[
-                            { id: 'raghendh', icon: 'ph-barbell', label: 'Raghendh', color: 'mdSysColorPrimary' },
-                            { id: 'devanandh', icon: 'ph-sneaker-move', label: 'Devanandh', color: 'mdSysColorSecondary' },
-                            { id: 'history', icon: 'ph-clock-counter-clockwise', label: 'History', color: 'mdSysColorOnSurface' },
-                            { id: 'library', icon: 'ph-books', label: 'Library', color: 'mdSysColorOnSurface' }
+                            { id: 'raghendh', icon: 'ph-barbell', label: 'Raghendh', color: 'dodOrange' },
+                            { id: 'devanandh', icon: 'ph-sneaker-move', label: 'Devanandh', color: 'dodGreen' },
+                            { id: 'history', icon: 'ph-clock-counter-clockwise', label: 'History', color: 'white' },
+                            { id: 'library', icon: 'ph-books', label: 'Library', color: 'white' }
                         ].map(item => {
                             const isActive = tab === item.id;
-                            const activeBg = item.id === 'raghendh' ? 'bg-mdSysColorPrimaryContainer text-mdSysColorOnPrimaryContainer' : 
-                                             item.id === 'devanandh' ? 'bg-mdSysColorSecondaryContainer text-mdSysColorOnSecondaryContainer' : 
-                                             'bg-mdSysColorSurfaceVariant text-mdSysColorOnSurface';
+                            const activeClass = item.id === 'raghendh' ? 'text-dodOrange' : item.id === 'devanandh' ? 'text-dodGreen' : 'text-white';
                             
                             return (
                                 <button key={item.id} onClick={() => setTab(item.id)} className="flex flex-col items-center justify-center w-16 group">
-                                    <div className={`w-14 h-8 rounded-full flex items-center justify-center mb-1 transition-all duration-300 ${isActive ? activeBg : 'text-mdSysColorOnSurfaceVariant group-hover:bg-white/5'}`}>
-                                        <i className={`${isActive ? 'ph-fill' : 'ph-bold'} ${item.icon} text-xl`}></i>
+                                    <div className={`transition-all duration-200 ${isActive ? activeClass : 'text-gray-500 group-hover:text-gray-300'}`}>
+                                        <i className={`${isActive ? 'ph-fill' : 'ph-bold'} ${item.icon} text-2xl`}></i>
                                     </div>
-                                    <span className={`text-[10px] font-medium tracking-wide transition-colors ${isActive ? 'text-mdSysColorOnSurface' : 'text-mdSysColorOnSurfaceVariant'}`}>
-                                        {item.label}
-                                    </span>
+                                    <span className={`text-[9px] font-bold mt-0.5 ${isActive ? activeClass : 'text-gray-600'}`}>{item.label}</span>
                                 </button>
                             );
                         })}
