@@ -22,6 +22,9 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
     <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -57,16 +60,21 @@
             theme: {
                 extend: {
                     colors: {
-                        dodViolet: '#7c3aed', // Elegant Deep Purple
-                        dodGreen: '#22c55e',  // Partner Color (Green-500)
-                        dodDark: '#000000',   // Pure Black
-                        dodCard: '#121212',   // Slightly lighter black
-                        dodInput: '#1F1F1F',  // Dark Gray inputs
-                        dodText: '#E5E5E5'
+                        dodViolet: '#8b5cf6', // Lighter Purple for dark mode
+                        dodGreen: '#34d399',  // Lighter Emerald for dark mode
+                        dodBg: '#000000',     // Pure Black
+                        dodCard: '#1c1c1e',   // Apple Dark Gray
+                        dodInput: '#2c2c2e',  // Input Gray
+                        dodText: '#e5e7eb',   // Light Gray Text
+                        dodSub: '#9ca3af',    // Subtitle Gray
+                        dodBorder: '#374151'  // Border Gray
                     },
                     fontFamily: {
                         sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'],
                         mono: ['SF Mono', 'Menlo', 'Monaco', 'Courier New', 'monospace'],
+                    },
+                    boxShadow: {
+                        'glow': '0 0 15px rgba(139, 92, 246, 0.15)',
                     }
                 }
             }
@@ -74,18 +82,23 @@
     </script>
 
     <style>
-        body { background-color: #000000; color: #E5E5E5; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
-        input, select, button { outline: none; }
+        body { background-color: #000000; color: #e5e7eb; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+        input, select, button, textarea { outline: none; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
         /* Dynamic Theme Classes */
-        .theme-violet { --theme-color: #7c3aed; }
-        .theme-green { --theme-color: #22c55e; }
+        .theme-violet { --theme-color: #8b5cf6; --theme-bg: rgba(139, 92, 246, 0.1); }
+        .theme-green { --theme-color: #34d399; --theme-bg: rgba(52, 211, 153, 0.1); }
+        
         .text-theme { color: var(--theme-color); }
+        .bg-theme-soft { background-color: var(--theme-bg); }
         .bg-theme { background-color: var(--theme-color); }
         .border-theme { border-color: var(--theme-color); }
         .ring-theme { --tw-ring-color: var(--theme-color); }
+        
+        .animate-fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
@@ -94,7 +107,6 @@
     <script type="text/babel">
         const { useState, useEffect, useRef, useMemo } = React;
 
-        // --- UTILS ---
         const getTodayDateString = () => {
             const date = new Date();
             const year = date.getFullYear();
@@ -106,17 +118,15 @@
         // --- COMPONENTS ---
 
         const SetupScreen = ({ error }) => (
-            <div className="min-h-screen bg-dodDark flex flex-col items-center justify-center p-6 text-center">
-                <h1 className="text-2xl font-bold text-dodViolet mb-2">Authentication Error</h1>
-                <p className="text-gray-400 mb-6 text-sm">{error?.message || "Could not connect."}</p>
-                <div className="bg-dodCard p-4 rounded text-left text-xs text-gray-400 w-full max-w-md">
-                    Check Firebase Console: Auth > Anonymous Enabled? Database Rules > Public?
-                </div>
+            <div className="min-h-screen bg-dodBg flex flex-col items-center justify-center p-6 text-center">
+                <i className="ph ph-warning text-4xl text-dodViolet mb-4"></i>
+                <h1 className="text-2xl font-bold text-dodText mb-2">Connection Issue</h1>
+                <p className="text-dodSub mb-6 text-sm">{error?.message || "Could not connect to Firebase."}</p>
             </div>
         );
 
-        // 1. STOPWATCH
-        const Stopwatch = ({ label, themeColorClass, textColorClass }) => {
+        // 1. BIG STOPWATCH
+        const Stopwatch = ({ label, themeClass }) => {
             const [time, setTime] = useState(0);
             const [isRunning, setIsRunning] = useState(false);
             const timerRef = useRef(null);
@@ -138,24 +148,40 @@
             const format = (ms) => {
                 const mins = Math.floor(ms / 60000).toString().padStart(2, '0');
                 const secs = Math.floor((ms % 60000) / 1000).toString().padStart(2, '0');
-                const decis = Math.floor((ms % 1000) / 100);
-                return `${mins}:${secs}.${decis}`;
+                return `${mins}:${secs}`;
             };
+            
+            const decis = Math.floor((time % 1000) / 100);
 
             return (
-                <div onClick={toggle} className={`flex-1 mx-1 p-2 rounded border flex flex-col items-center justify-center cursor-pointer active:opacity-80 transition-colors ${isRunning ? `bg-dodCard ${themeColorClass}` : 'bg-dodCard border-transparent'}`}>
-                    <span className="text-[10px] font-bold tracking-widest text-gray-500 uppercase">{label}</span>
-                    <div className={`text-2xl font-mono font-bold tracking-tighter ${isRunning ? textColorClass : 'text-white'}`}>
-                        {format(time)}
+                // CHANGED: Increased vertical padding (py-10) and reduced horizontal padding (px-1)
+                // CHANGED: Font size set to text-5xl to ensure fit within borders
+                <div onClick={toggle} className={`flex-1 mx-2 py-10 px-1 rounded-3xl flex flex-col items-center justify-center cursor-pointer transition-all active:scale-95 border ${isRunning ? `bg-dodCard ${themeClass.replace('text-', 'border-')} shadow-glow` : 'bg-dodCard border-white/5'}`}>
+                    <span className="text-sm font-bold tracking-widest text-gray-500 uppercase mb-2">{label}</span>
+                    <div className={`text-5xl font-mono font-bold tracking-tighter tabular-nums flex items-baseline ${isRunning ? themeClass : 'text-gray-300'}`}>
+                        {format(time)}<span className="text-2xl opacity-50">.{decis}</span>
+                    </div>
+                    <div className={`mt-4 text-[10px] font-bold uppercase tracking-widest px-4 py-1.5 rounded-full ${isRunning ? themeClass.replace('text-', 'bg-').replace('500', '900') + ' bg-opacity-20 ' + themeClass : 'bg-dodInput text-gray-500'}`}>
+                        {isRunning ? 'Reset' : 'Start'}
                     </div>
                 </div>
             );
         };
 
-        // 2. EXERCISE ROW
-        const ExerciseRow = ({ exercise, exIndex, updateExercise, deleteExercise, allExerciseNames, themeClass }) => {
+        // 2. EXERCISE ROW (With Custom Dropdown)
+        const ExerciseRow = ({ exercise, exIndex, updateExercise, deleteExercise, suggestionList, themeClass }) => {
+            const [showRemark, setShowRemark] = useState(!!exercise.remark);
+            const [showSuggestions, setShowSuggestions] = useState(false);
+            
+            // Filter suggestions based on input
+            const filteredSuggestions = useMemo(() => {
+                if (!exercise.name) return suggestionList.slice(0, 5); // Show first 5 if empty
+                const lowerInput = exercise.name.toLowerCase();
+                return suggestionList.filter(s => s.toLowerCase().includes(lowerInput)).slice(0, 5);
+            }, [exercise.name, suggestionList]);
+
             const addSet = () => {
-                const newSets = [...(exercise.sets || []), { weight: '', reps: '' }];
+                const newSets = [...(exercise.sets || []), { weight: '', reps: '', uni: false }];
                 updateExercise(exIndex, { ...exercise, sets: newSets });
             };
 
@@ -170,49 +196,111 @@
                 updateExercise(exIndex, { ...exercise, sets: newSets });
             };
 
+            const handleNameSelect = (name) => {
+                updateExercise(exIndex, { ...exercise, name: name });
+                setShowSuggestions(false);
+            };
+
             return (
-                <div className={`mb-4 bg-dodCard border border-white/5 rounded-lg overflow-hidden ${themeClass}`}>
-                    <div className="flex justify-between items-center p-3 bg-white/5 border-b border-white/5">
-                        <input 
-                            list={`list-${exIndex}`}
-                            value={exercise.name}
-                            onChange={(e) => updateExercise(exIndex, {...exercise, name: e.target.value})}
-                            className="bg-transparent text-white font-bold text-lg w-full placeholder-gray-600 uppercase tracking-tight"
-                            placeholder="EXERCISE NAME"
-                        />
-                        <datalist id={`list-${exIndex}`}>
-                            {allExerciseNames.map((name, i) => <option key={i} value={name} />)}
-                        </datalist>
-                        <button onClick={() => deleteExercise(exIndex)} className="text-gray-600 px-2 font-bold hover:text-white">×</button>
+                <div className={`mb-6 bg-dodCard rounded-2xl overflow-visible border border-white/5 transition-all ${themeClass}`}>
+                    {/* Header */}
+                    <div className="flex justify-between items-start p-4 border-b border-white/5 bg-white/5">
+                        <div className="flex-1 mr-2 relative">
+                            <input 
+                                value={exercise.name}
+                                onChange={(e) => {
+                                    updateExercise(exIndex, {...exercise, name: e.target.value});
+                                    setShowSuggestions(true);
+                                }}
+                                onFocus={() => setShowSuggestions(true)}
+                                onBlur={() => setTimeout(() => setShowSuggestions(false), 200)} // Delay to allow click
+                                className="bg-transparent text-white font-bold text-lg w-full placeholder-gray-600 focus:placeholder-gray-500"
+                                placeholder="Exercise Name..."
+                                autoComplete="off"
+                            />
+                            {/* Custom Dropdown */}
+                            {showSuggestions && filteredSuggestions.length > 0 && (
+                                <ul className="absolute left-0 top-full w-full bg-dodInput border border-white/10 rounded-lg mt-1 shadow-xl z-50 max-h-40 overflow-y-auto">
+                                    {filteredSuggestions.map((suggestion, i) => (
+                                        <li 
+                                            key={i}
+                                            onMouseDown={(e) => { e.preventDefault(); handleNameSelect(suggestion); }}
+                                            className="px-3 py-2 text-sm text-gray-300 hover:bg-white/10 cursor-pointer border-b border-white/5 last:border-0"
+                                        >
+                                            {suggestion}
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+                        <div className="flex gap-2">
+                            <button onClick={() => setShowRemark(!showRemark)} className={`p-2 rounded-full hover:bg-white/10 transition-colors ${exercise.remark ? 'text-theme' : 'text-gray-500'}`}>
+                                <i className="ph ph-notebook text-lg"></i>
+                            </button>
+                            <button onClick={() => deleteExercise(exIndex)} className="p-2 text-gray-500 hover:text-red-500 rounded-full hover:bg-red-500/10 transition-colors">
+                                <i className="ph ph-trash text-lg"></i>
+                            </button>
+                        </div>
                     </div>
                     
-                    <div className="p-2 space-y-2">
+                    {/* Remark Input */}
+                    {showRemark && (
+                        <div className="px-4 py-2 bg-theme-soft border-b border-theme border-opacity-20">
+                            <textarea
+                                value={exercise.remark || ""}
+                                onChange={(e) => updateExercise(exIndex, {...exercise, remark: e.target.value})}
+                                placeholder="Add notes (e.g., seat height 4, felt easy)..."
+                                className="w-full bg-transparent text-sm text-gray-300 placeholder-gray-500 resize-none h-auto focus:text-white"
+                                rows="1"
+                            />
+                        </div>
+                    )}
+                    
+                    {/* Sets */}
+                    <div className="p-3 space-y-3">
+                        <div className="flex px-2 text-[10px] uppercase font-bold text-gray-500 tracking-wider">
+                            <div className="w-6 text-center">#</div>
+                            <div className="flex-1 pl-1">Weight</div>
+                            <div className="flex-1 pl-1">Reps</div>
+                            <div className="w-12 text-center">Uni</div>
+                            <div className="w-6"></div>
+                        </div>
+                        
                         {(exercise.sets || []).map((set, sIndex) => (
                             <div key={sIndex} className="flex gap-2 items-center">
-                                <span className="text-gray-600 text-[10px] w-4 font-mono text-center pt-1">{sIndex + 1}</span>
-                                <div className="flex-1 flex gap-2">
-                                    <div className="relative flex-1">
-                                        <input 
-                                            type="number" value={set.weight}
-                                            onChange={(e) => updateSet(sIndex, 'weight', e.target.value)}
-                                            className="bg-dodInput text-white p-2 pl-3 rounded w-full font-mono text-sm border border-transparent focus:border-theme ring-theme focus:ring-1"
-                                        />
-                                        <span className="absolute right-2 top-2 text-xs text-gray-600 pointer-events-none">kg</span>
-                                    </div>
-                                    <div className="relative flex-1">
-                                        <input 
-                                            type="number" value={set.reps}
-                                            onChange={(e) => updateSet(sIndex, 'reps', e.target.value)}
-                                            className="bg-dodInput text-white p-2 pl-3 rounded w-full font-mono text-sm border border-transparent focus:border-theme ring-theme focus:ring-1"
-                                        />
-                                        <span className="absolute right-2 top-2 text-xs text-gray-600 pointer-events-none">rep</span>
-                                    </div>
+                                <span className="text-gray-500 text-xs w-6 text-center font-mono">{sIndex + 1}</span>
+                                <div className="flex-1 relative">
+                                    <input 
+                                        type="number" value={set.weight}
+                                        onChange={(e) => updateSet(sIndex, 'weight', e.target.value)}
+                                        className="bg-dodInput text-white p-2.5 rounded-lg w-full font-mono text-sm border border-transparent focus:border-theme focus:ring-1 ring-theme transition-all placeholder-gray-600"
+                                        placeholder="0"
+                                    />
+                                    <span className="absolute right-2 top-2.5 text-xs text-gray-500 pointer-events-none">kg</span>
                                 </div>
-                                <button onClick={() => removeSet(sIndex)} className="text-gray-700 w-6 h-6 flex items-center justify-center text-xs">×</button>
+                                <div className="flex-1 relative">
+                                    <input 
+                                        type="number" value={set.reps}
+                                        onChange={(e) => updateSet(sIndex, 'reps', e.target.value)}
+                                        className="bg-dodInput text-white p-2.5 rounded-lg w-full font-mono text-sm border border-transparent focus:border-theme focus:ring-1 ring-theme transition-all placeholder-gray-600"
+                                        placeholder="0"
+                                    />
+                                </div>
+                                <div className="w-12 flex justify-center">
+                                    <button 
+                                        onClick={() => updateSet(sIndex, 'uni', !set.uni)}
+                                        className={`w-8 h-8 rounded-md flex items-center justify-center border transition-all ${set.uni ? 'bg-theme border-theme text-white' : 'bg-dodInput border-transparent text-gray-500'}`}
+                                    >
+                                        <span className="text-[10px] font-bold">1</span>
+                                    </button>
+                                </div>
+                                <button onClick={() => removeSet(sIndex)} className="text-gray-600 hover:text-red-400 w-6 flex justify-center">
+                                    <i className="ph ph-x-circle text-lg"></i>
+                                </button>
                             </div>
                         ))}
-                        <button onClick={addSet} className="w-full py-2 mt-2 text-[10px] font-bold text-gray-400 bg-dodInput rounded hover:text-white hover:bg-white/10 uppercase tracking-widest transition-colors">
-                            + Add Set
+                        <button onClick={addSet} className="w-full py-3 mt-2 text-xs font-bold text-theme bg-theme-soft rounded-xl hover:bg-opacity-80 uppercase tracking-widest transition-colors flex items-center justify-center gap-2">
+                            <i className="ph ph-plus-circle text-lg"></i> Add Set
                         </button>
                     </div>
                 </div>
@@ -220,25 +308,28 @@
         };
 
         // 3. WORKOUT LOGGER
-        const WorkoutLogger = ({ userKey, allHistory, themeClass, activeColorClass }) => {
+        const WorkoutLogger = ({ userKey, allHistory, themeClass }) => {
             const [split, setSplit] = useState("");
+            const [bodyWeight, setBodyWeight] = useState("");
             const [exercises, setExercises] = useState([]);
             const [status, setStatus] = useState("");
             const date = getTodayDateString();
 
-            const allExerciseNames = useMemo(() => {
-                const names = new Set();
+            // SMART SUGGESTIONS: History Only (Global)
+            const suggestionList = useMemo(() => {
+                const historySet = new Set();
                 if (allHistory) {
                     Object.values(allHistory).forEach(dateObj => {
-                        ['raghendh', 'devanandh'].forEach(u => {
-                            if (dateObj[u]?.exercises) {
-                                dateObj[u].exercises.forEach(e => { if(e.name) names.add(e.name) });
-                            }
-                        });
+                        const userData = dateObj[userKey];
+                        if (userData && userData.exercises) {
+                            userData.exercises.forEach(e => {
+                                if (e.name) historySet.add(e.name);
+                            });
+                        }
                     });
                 }
-                return Array.from(names).sort();
-            }, [allHistory]);
+                return Array.from(historySet).sort();
+            }, [allHistory, userKey]);
 
             useEffect(() => {
                 if (!window.db) return;
@@ -247,22 +338,28 @@
                     const data = snapshot.val();
                     if (data) {
                         setSplit(data.split || "");
+                        setBodyWeight(data.bodyWeight || "");
                         setExercises(data.exercises || []);
                     } else {
                         setSplit("");
+                        setBodyWeight("");
                         setExercises([]);
                     }
                 });
                 return () => unsubscribe();
             }, [userKey, date]);
 
-            const saveData = async (newExercises, newSplit) => {
+            const saveData = async (updates) => {
                 setStatus("Saving...");
                 try {
-                    await window.set(window.ref(window.db, `${date}/${userKey}`), {
-                        split: newSplit !== undefined ? newSplit : split,
-                        exercises: newExercises !== undefined ? newExercises : exercises
-                    });
+                    // Trim exercise names before saving
+                    let cleanExercises = exercises;
+                    if (updates.exercises) {
+                        cleanExercises = updates.exercises.map(ex => ({...ex, name: ex.name.trim()}));
+                    }
+                    
+                    const currentData = { split, bodyWeight, exercises: cleanExercises, ...updates };
+                    await window.set(window.ref(window.db, `${date}/${userKey}`), currentData);
                     setStatus("Saved");
                     setTimeout(() => setStatus(""), 1500);
                 } catch (e) {
@@ -270,44 +367,64 @@
                 }
             };
 
+            const handleUpdate = (field, value) => {
+                if (field === 'split') setSplit(value);
+                if (field === 'bodyWeight') setBodyWeight(value);
+                saveData({ [field]: value });
+            };
+
             const handleAddExercise = () => {
-                const newEx = [...exercises, { name: "", sets: [{weight: '', reps: ''}] }];
+                const newEx = [...exercises, { name: "", sets: [{weight: '', reps: '', uni: false}] }];
                 setExercises(newEx);
-                saveData(newEx, undefined);
+                saveData({ exercises: newEx });
             };
 
             const handleUpdateExercise = (index, data) => {
                 const newEx = [...exercises];
                 newEx[index] = data;
                 setExercises(newEx);
-                saveData(newEx, undefined);
+                saveData({ exercises: newEx });
             };
 
             const handleDeleteExercise = (index) => {
                 const newEx = exercises.filter((_, i) => i !== index);
                 setExercises(newEx);
-                saveData(newEx, undefined);
+                saveData({ exercises: newEx });
             };
 
-            const splits = ["Push", "Pull", "Legs", "Upper", "Lower", "Full Body", "Cardio", "Arms", "Rest"];
+            const splits = ["Push", "Pull", "Legs", "Upper", "Lower", "Full Body", "Cardio", "Arms", "Abs", "Rest"];
 
             return (
                 <div className={`pb-24 animate-fade-in ${themeClass}`}>
-                    <div className="mb-6">
-                        <div className={`text-[10px] uppercase tracking-widest mb-2 font-bold text-theme`}>Today's Split</div>
-                        <div className="flex flex-wrap gap-2">
-                            {splits.map(s => (
-                                <button 
-                                    key={s}
-                                    onClick={() => { setSplit(s); saveData(undefined, s); }}
-                                    className={`px-3 py-1 rounded text-[10px] font-bold border transition-colors uppercase ${split === s ? `bg-theme border-theme text-white` : 'border-gray-800 text-gray-500 bg-dodCard'}`}
-                                >
-                                    {s}
-                                </button>
-                            ))}
+                    {/* Controls Card */}
+                    <div className="bg-dodCard p-4 rounded-2xl mb-6 border border-white/5">
+                        <div className="mb-4">
+                            <label className="text-[10px] uppercase tracking-widest font-bold text-gray-500 mb-2 block">Today's Focus</label>
+                            <div className="flex flex-wrap gap-2">
+                                {splits.map(s => (
+                                    <button 
+                                        key={s}
+                                        onClick={() => handleUpdate('split', s)}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${split === s ? `bg-theme border-theme text-white shadow-lg` : 'border-white/10 text-gray-500 bg-dodInput hover:bg-white/10'}`}
+                                    >
+                                        {s}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        <div>
+                            <label className="text-[10px] uppercase tracking-widest font-bold text-gray-500 mb-2 block">Body Weight (kg)</label>
+                            <input 
+                                type="number" 
+                                value={bodyWeight}
+                                onChange={(e) => handleUpdate('bodyWeight', e.target.value)}
+                                placeholder="--.-"
+                                className="w-full bg-dodInput border border-white/5 rounded-lg p-2 text-sm font-mono focus:border-theme outline-none transition-colors text-white placeholder-gray-600"
+                            />
                         </div>
                     </div>
 
+                    {/* Exercises */}
                     <div className="space-y-4">
                         {exercises.map((ex, i) => (
                             <ExerciseRow 
@@ -316,7 +433,7 @@
                                 exIndex={i} 
                                 updateExercise={handleUpdateExercise}
                                 deleteExercise={handleDeleteExercise}
-                                allExerciseNames={allExerciseNames}
+                                suggestionList={suggestionList}
                                 themeClass={themeClass}
                             />
                         ))}
@@ -324,23 +441,28 @@
 
                     <button 
                         onClick={handleAddExercise}
-                        className={`mt-6 w-full py-4 rounded border border-dashed border-gray-800 text-gray-500 font-bold hover:border-theme hover:text-theme transition-colors text-sm tracking-widest uppercase`}
+                        className={`mt-6 w-full py-4 rounded-2xl border-2 border-dashed border-gray-700 text-gray-500 font-bold hover:border-theme hover:text-theme hover:bg-dodCard transition-all text-sm tracking-widest uppercase flex items-center justify-center gap-2`}
                     >
-                        + Add Exercise
+                        <i className="ph ph-barbell text-xl"></i> Add Exercise
                     </button>
 
                     {status && (
-                        <div className={`fixed bottom-20 left-1/2 transform -translate-x-1/2 bg-theme text-white px-4 py-1 rounded-full text-xs font-bold shadow-xl z-50`}>
-                            {status}
+                        <div className={`fixed bottom-24 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-4 py-2 rounded-full text-xs font-bold shadow-xl z-50 flex items-center gap-2 animate-fade-in border border-white/10`}>
+                            <i className="ph ph-check-circle text-green-400"></i> {status}
                         </div>
                     )}
                 </div>
             );
         };
 
-        // 4. HISTORY PAGE (Enhanced Search)
+        // 4. HISTORY PAGE
         const HistoryPage = ({ historyData }) => {
             const [searchTerm, setSearchTerm] = useState("");
+            const [viewRemarks, setViewRemarks] = useState({});
+
+            const toggleRemark = (id) => {
+                setViewRemarks(prev => ({...prev, [id]: !prev[id]}));
+            };
             
             const allExerciseNames = useMemo(() => {
                 const names = new Set();
@@ -358,167 +480,142 @@
 
             const dates = Object.keys(historyData || {}).sort().reverse();
 
-            // Filter logic separated by User
             const searchResults = useMemo(() => {
                 if (!searchTerm) return null;
-                
-                const raghendhResults = [];
-                const devanandhResults = [];
-
+                const res = { raghendh: [], devanandh: [] };
                 dates.forEach(date => {
                     const dayData = historyData[date];
-                    
-                    // Check Raghendh
-                    if (dayData.raghendh?.exercises) {
-                        dayData.raghendh.exercises.forEach(ex => {
-                            if (ex.name === searchTerm) {
-                                raghendhResults.push({ date, split: dayData.raghendh.split, exercise: ex });
-                            }
-                        });
-                    }
-                    // Check Devanandh
-                    if (dayData.devanandh?.exercises) {
-                        dayData.devanandh.exercises.forEach(ex => {
-                            if (ex.name === searchTerm) {
-                                devanandhResults.push({ date, split: dayData.devanandh.split, exercise: ex });
-                            }
-                        });
-                    }
+                    ['raghendh', 'devanandh'].forEach(u => {
+                        if (dayData[u]?.exercises) {
+                            dayData[u].exercises.forEach(ex => {
+                                if (ex.name.toLowerCase().includes(searchTerm.toLowerCase())) {
+                                    res[u].push({ date, split: dayData[u].split, bw: dayData[u].bodyWeight, exercise: ex });
+                                }
+                            });
+                        }
+                    });
                 });
-                return { raghendh: raghendhResults, devanandh: devanandhResults };
+                return res;
             }, [searchTerm, historyData, dates]);
 
             return (
                 <div className="pb-24 space-y-4">
-                    {/* SEARCH BAR */}
-                    <div className="sticky top-0 bg-dodDark z-10 pt-2 pb-4 border-b border-white/10">
-                        <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">Search History</label>
-                        <div className="relative">
+                    {/* Search Header */}
+                    <div className="sticky top-0 bg-black/90 z-10 pt-2 pb-4 border-b border-white/10 backdrop-blur-md">
+                        <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-2 block px-2">Search History</label>
+                        <div className="relative mx-1">
+                            <i className="ph ph-magnifying-glass absolute left-3 top-3 text-gray-400 text-lg"></i>
                             <input 
                                 list="history-search" 
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                placeholder="Select Exercise..."
-                                className="w-full bg-dodInput text-white p-3 rounded border border-transparent focus:border-dodViolet placeholder-gray-600 text-sm"
+                                placeholder="Exercise Name..."
+                                className="w-full bg-dodCard text-white p-3 pl-10 rounded-xl shadow-sm border border-transparent focus:border-dodViolet focus:ring-1 ring-dodViolet outline-none text-sm transition-all placeholder-gray-600"
                             />
                             <datalist id="history-search">
                                 {allExerciseNames.map((name, i) => <option key={i} value={name} />)}
                             </datalist>
                             {searchTerm && (
-                                <button 
-                                    onClick={() => setSearchTerm("")}
-                                    className="absolute right-2 top-2 text-dodViolet text-xs font-bold p-1"
-                                >
-                                    CLEAR
+                                <button onClick={() => setSearchTerm("")} className="absolute right-3 top-3 text-gray-400 hover:text-white">
+                                    <i className="ph ph-x-circle text-lg"></i>
                                 </button>
                             )}
                         </div>
                     </div>
 
-                    {/* SEARCH MODE VIEW (Split Columns) */}
+                    {/* SEARCH RESULTS */}
                     {searchTerm && searchResults && (
-                        <div className="animate-fade-in">
-                            <div className="text-gray-500 text-[10px] uppercase tracking-widest mb-4 text-center">
-                                History for "{searchTerm}"
-                            </div>
-                            
-                            <div className="grid grid-cols-2 gap-2">
-                                {/* RAGHENDH COLUMN */}
-                                <div>
-                                    <div className="text-dodViolet text-xs font-black uppercase mb-2 tracking-widest text-center border-b border-dodViolet/30 pb-1">Raghendh</div>
-                                    <div className="space-y-2">
-                                        {searchResults.raghendh.length === 0 && <div className="text-gray-600 text-[10px] text-center">No history</div>}
-                                        {searchResults.raghendh.map((item, i) => (
-                                            <div key={i} className="bg-dodCard border-l-2 border-dodViolet p-2 rounded-r">
-                                                {/* Sets as main content */}
-                                                <div className="space-y-1 mb-2">
-                                                    {item.exercise.sets?.map((set, si) => (
-                                                        <div key={si} className="text-sm font-bold text-white font-mono">
-                                                            {set.weight}<span className="text-xs text-gray-500 font-normal ml-0.5">kg</span> <span className="text-gray-600 text-xs mx-0.5">x</span> {set.reps}
+                        <div className="animate-fade-in px-1">
+                            <div className="grid grid-cols-2 gap-4">
+                                {['raghendh', 'devanandh'].map(u => (
+                                    <div key={u}>
+                                        <div className={`text-sm font-black uppercase mb-3 tracking-widest text-center pb-1 border-b-2 ${u === 'raghendh' ? 'text-dodViolet border-dodViolet' : 'text-dodGreen border-dodGreen'}`}>{u}</div>
+                                        <div className="space-y-3">
+                                            {searchResults[u].length === 0 && <div className="text-gray-600 text-[10px] text-center italic">No records</div>}
+                                            {searchResults[u].map((item, i) => {
+                                                const id = `${u}-${i}`;
+                                                return (
+                                                    <div key={i} className="bg-dodCard p-3 rounded-xl border border-white/5">
+                                                        <div className="flex justify-between items-baseline mb-2">
+                                                            <span className="text-xs font-bold text-gray-400">{item.date}</span>
+                                                            {item.bw && <span className="text-[9px] bg-white/10 px-1 rounded text-gray-400">BW: {item.bw}</span>}
                                                         </div>
-                                                    ))}
-                                                </div>
-                                                {/* Date as subtext */}
-                                                <div className="text-gray-500 text-[9px] uppercase tracking-wider text-right">{item.date}</div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* DEVANANDH COLUMN */}
-                                <div>
-                                    <div className="text-dodGreen text-xs font-black uppercase mb-2 tracking-widest text-center border-b border-dodGreen/30 pb-1">Devanandh</div>
-                                    <div className="space-y-2">
-                                        {searchResults.devanandh.length === 0 && <div className="text-gray-600 text-[10px] text-center">No history</div>}
-                                        {searchResults.devanandh.map((item, i) => (
-                                            <div key={i} className="bg-dodCard border-l-2 border-dodGreen p-2 rounded-r">
-                                                {/* Sets as main content */}
-                                                <div className="space-y-1 mb-2">
-                                                    {item.exercise.sets?.map((set, si) => (
-                                                        <div key={si} className="text-sm font-bold text-white font-mono">
-                                                            {set.weight}<span className="text-xs text-gray-500 font-normal ml-0.5">kg</span> <span className="text-gray-600 text-xs mx-0.5">x</span> {set.reps}
+                                                        <div className="space-y-1">
+                                                            {item.exercise.sets?.map((set, si) => (
+                                                                <div key={si} className="text-base font-bold text-gray-200 font-mono flex justify-between">
+                                                                    <span>{set.weight}kg x {set.reps}</span>
+                                                                    {set.uni && <span className="text-[9px] text-orange-400 bg-orange-900/30 border border-orange-500/30 px-1 rounded">UNI</span>}
+                                                                </div>
+                                                            ))}
                                                         </div>
-                                                    ))}
-                                                </div>
-                                                {/* Date as subtext */}
-                                                <div className="text-gray-500 text-[9px] uppercase tracking-wider text-right">{item.date}</div>
-                                            </div>
-                                        ))}
+                                                        {item.exercise.remark && (
+                                                            <div className="mt-2 pt-2 border-t border-white/5">
+                                                                <button onClick={() => toggleRemark(id)} className="text-xs flex items-center gap-1 text-green-400 hover:text-green-300">
+                                                                    <i className="ph ph-chat-text text-green-400"></i> {viewRemarks[id] ? "Hide Note" : "View Note"}
+                                                                </button>
+                                                                {viewRemarks[id] && <div className="mt-1 text-xs text-gray-400 italic bg-white/5 p-1 rounded">{item.exercise.remark}</div>}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
                                     </div>
-                                </div>
+                                ))}
                             </div>
                         </div>
                     )}
 
-                    {/* DEFAULT VIEW (FULL HISTORY) */}
+                    {/* FULL HISTORY VIEW */}
                     {!searchTerm && dates.map(dateStr => {
                         const dayData = historyData[dateStr];
-                        if (!dayData || typeof dayData !== 'object') return null;
+                        if (!dayData) return null;
 
                         return (
-                            <div key={dateStr} className="bg-dodCard border border-white/5 rounded-lg overflow-hidden">
-                                <div className="bg-white/5 p-2 px-3 flex justify-between items-center">
-                                    <h3 className="text-sm font-bold text-white">{dateStr}</h3>
+                            <div key={dateStr} className="bg-dodCard mx-1 rounded-2xl overflow-hidden mb-4 border border-white/5">
+                                <div className="bg-white/5 p-3 flex justify-between items-center border-b border-white/5">
+                                    <h3 className="text-base font-bold text-gray-300">{dateStr}</h3>
                                 </div>
                                 <div className="grid grid-cols-2 divide-x divide-white/5">
-                                    {/* RAGHENDH COLUMN */}
-                                    <div className="p-3">
-                                        <div className="text-dodViolet text-[10px] font-black uppercase mb-2 tracking-widest">Raghendh <span className="text-gray-600 font-normal ml-1">| {dayData.raghendh?.split || "-"}</span></div>
-                                        <div className="space-y-3">
-                                            {(dayData.raghendh?.exercises || []).map((ex, i) => (
-                                                <div key={i}>
-                                                    <div className="text-xs text-white font-bold uppercase mb-1">{ex.name}</div>
-                                                    <div className="space-y-0.5">
-                                                        {(ex.sets || []).map((s, si) => (
-                                                            <div key={si} className="text-[11px] font-mono text-gray-400">
-                                                                {s.weight}<span className="text-gray-600">kg</span> x {s.reps}
-                                                            </div>
-                                                        ))}
-                                                    </div>
+                                    {['raghendh', 'devanandh'].map(u => {
+                                        const uData = dayData[u];
+                                        const color = u === 'raghendh' ? 'text-dodViolet' : 'text-dodGreen';
+                                        
+                                        return (
+                                            <div key={u} className="p-3">
+                                                <div className={`text-xs font-black uppercase mb-2 tracking-widest ${color}`}>
+                                                    {u} <span className="text-gray-500 font-normal">| {uData?.split || "-"}</span>
                                                 </div>
-                                            ))}
-                                            {!dayData.raghendh?.exercises && <div className="text-[10px] text-gray-700">Rest Day</div>}
-                                        </div>
-                                    </div>
-                                    {/* DEVANANDH COLUMN */}
-                                    <div className="p-3">
-                                        <div className="text-dodGreen text-[10px] font-black uppercase mb-2 tracking-widest">Devanandh <span className="text-gray-600 font-normal ml-1">| {dayData.devanandh?.split || "-"}</span></div>
-                                        <div className="space-y-3">
-                                            {(dayData.devanandh?.exercises || []).map((ex, i) => (
-                                                <div key={i}>
-                                                    <div className="text-xs text-white font-bold uppercase mb-1">{ex.name}</div>
-                                                    <div className="space-y-0.5">
-                                                        {(ex.sets || []).map((s, si) => (
-                                                            <div key={si} className="text-[11px] font-mono text-gray-400">
-                                                                {s.weight}<span className="text-gray-600">kg</span> x {s.reps}
+                                                {uData?.bodyWeight && <div className="text-xs mb-2 text-gray-400 bg-white/5 inline-block px-1.5 py-0.5 rounded">BW: {uData.bodyWeight}kg</div>}
+                                                
+                                                <div className="space-y-4">
+                                                    {(uData?.exercises || []).map((ex, i) => {
+                                                        const id = `${dateStr}-${u}-${i}`;
+                                                        return (
+                                                            <div key={i}>
+                                                                <div className="text-sm font-bold text-gray-200 uppercase mb-1 truncate">{ex.name}</div>
+                                                                <div className="space-y-0.5">
+                                                                    {(ex.sets || []).map((s, si) => (
+                                                                        <div key={si} className="text-base font-mono font-bold text-gray-400 flex justify-between items-center pr-1">
+                                                                            <span>{s.weight}kg x {s.reps}</span>
+                                                                            {s.uni && <span className="text-[8px] text-orange-400 border border-orange-500/30 px-0.5 rounded">U</span>}
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                                {ex.remark && (
+                                                                    <button onClick={() => toggleRemark(id)} className="mt-1 text-xs text-green-400 hover:text-green-300 flex items-center gap-1">
+                                                                        <i className="ph ph-note text-green-400"></i> Note
+                                                                    </button>
+                                                                )}
+                                                                {viewRemarks[id] && <div className="text-xs text-gray-400 italic mt-1 pl-1 border-l-2 border-white/10">{ex.remark}</div>}
                                                             </div>
-                                                        ))}
-                                                    </div>
+                                                        );
+                                                    })}
+                                                    {!uData?.exercises && <div className="text-[10px] text-gray-600 italic">Rest Day</div>}
                                                 </div>
-                                            ))}
-                                            {!dayData.devanandh?.exercises && <div className="text-[10px] text-gray-700">Rest Day</div>}
-                                        </div>
-                                    </div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         );
@@ -551,53 +648,61 @@
             }, []);
 
             if (authError) return <SetupScreen error={authError} />;
-            if (!isAuth) return <div className="h-screen bg-black flex items-center justify-center text-dodViolet font-bold animate-pulse tracking-widest">LOADING GYM...</div>;
+            if (!isAuth) return (
+                <div className="h-screen bg-dodBg flex flex-col items-center justify-center">
+                    <h1 className="text-6xl font-black text-white tracking-tighter italic animate-pulse">DOD</h1>
+                    <p className="text-dodViolet text-xs font-bold tracking-[0.5em] uppercase mt-2">Loading Gym...</p>
+                </div>
+            );
 
             return (
-                <div className="max-w-md mx-auto min-h-screen bg-black flex flex-col font-sans selection:bg-dodViolet selection:text-white">
+                <div className="max-w-md mx-auto min-h-screen bg-dodBg flex flex-col font-sans text-dodText">
                     {/* HEADER */}
-                    <div className="p-4 pt-6 bg-black border-b border-white/10">
-                        <div className="flex items-start justify-between mb-4">
+                    <div className="px-4 pt-6 pb-2 bg-dodBg z-20">
+                        <div className="flex items-end justify-between mb-6">
                             <div>
                                 <h1 className="text-4xl font-black text-white leading-none tracking-tighter italic">DOD</h1>
                                 <p className="text-dodViolet text-[0.6rem] font-bold tracking-[0.4em] uppercase">do or die</p>
                             </div>
                             <div className="text-right">
-                                <div className="text-[10px] text-gray-500 font-mono uppercase tracking-widest">{getTodayDateString()}</div>
+                                <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest bg-dodCard border border-white/10 px-2 py-1 rounded-full shadow-sm">{getTodayDateString()}</div>
                             </div>
                         </div>
-                        <div className="flex justify-between -mx-1">
-                            <Stopwatch label="RAGHENDH" themeColorClass="border-dodViolet" textColorClass="text-dodViolet" />
-                            <Stopwatch label="DEVANANDH" themeColorClass="border-dodGreen" textColorClass="text-dodGreen" />
+                        <div className="flex justify-between -mx-2 mb-2">
+                            <Stopwatch label="RAGHENDH" themeClass="text-dodViolet" />
+                            <Stopwatch label="DEVANANDH" themeClass="text-dodGreen" />
                         </div>
                     </div>
 
                     {/* CONTENT */}
-                    <main className="flex-1 p-4 overflow-y-auto no-scrollbar">
+                    <main className="flex-1 px-4 pb-4 overflow-y-auto no-scrollbar">
                         {tab === 'raghendh' && <WorkoutLogger userKey="raghendh" allHistory={allHistory} themeClass="theme-violet" />}
                         {tab === 'devanandh' && <WorkoutLogger userKey="devanandh" allHistory={allHistory} themeClass="theme-green" />}
                         {tab === 'history' && <HistoryPage historyData={allHistory} />}
                     </main>
 
                     {/* NAV */}
-                    <nav className="fixed bottom-0 max-w-md w-full bg-dodCard border-t border-white/10 flex justify-around p-1 pb-safe z-20">
+                    <nav className="fixed bottom-0 max-w-md w-full bg-dodCard border-t border-white/5 flex justify-around pb-safe shadow-[0_-5px_20px_rgba(0,0,0,0.5)] z-30 rounded-t-2xl">
                         <button 
                             onClick={() => setTab('raghendh')} 
-                            className={`flex-1 py-4 text-[10px] font-black uppercase tracking-[0.2em] transition-colors ${tab === 'raghendh' ? 'text-dodViolet' : 'text-gray-600'}`}
+                            className={`flex-1 py-4 flex flex-col items-center justify-center transition-all ${tab === 'raghendh' ? 'text-dodViolet' : 'text-gray-500'}`}
                         >
-                            RAGHENDH
+                            <i className={`ph ph-barbell text-2xl mb-1 ${tab === 'raghendh' ? 'font-bold' : ''}`}></i>
+                            <span className="text-[9px] font-black uppercase tracking-widest">Raghendh</span>
                         </button>
                         <button 
                             onClick={() => setTab('devanandh')} 
-                            className={`flex-1 py-4 text-[10px] font-black uppercase tracking-[0.2em] transition-colors ${tab === 'devanandh' ? 'text-dodGreen' : 'text-gray-600'}`}
+                            className={`flex-1 py-4 flex flex-col items-center justify-center transition-all ${tab === 'devanandh' ? 'text-dodGreen' : 'text-gray-500'}`}
                         >
-                            DEVANANDH
+                            <i className={`ph ph-sneaker-move text-2xl mb-1 ${tab === 'devanandh' ? 'font-bold' : ''}`}></i>
+                            <span className="text-[9px] font-black uppercase tracking-widest">Devanandh</span>
                         </button>
                         <button 
                             onClick={() => setTab('history')} 
-                            className={`flex-1 py-4 text-[10px] font-black uppercase tracking-[0.2em] transition-colors ${tab === 'history' ? 'text-white' : 'text-gray-600'}`}
+                            className={`flex-1 py-4 flex flex-col items-center justify-center transition-all ${tab === 'history' ? 'text-white' : 'text-gray-500'}`}
                         >
-                            HISTORY
+                            <i className={`ph ph-clock-counter-clockwise text-2xl mb-1 ${tab === 'history' ? 'font-bold' : ''}`}></i>
+                            <span className="text-[9px] font-black uppercase tracking-widest">History</span>
                         </button>
                     </nav>
                 </div>
@@ -607,12 +712,9 @@
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
 
-        // --- SERVICE WORKER REGISTRATION ---
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js')
-                    .then(reg => console.log('SW Registered', reg))
-                    .catch(err => console.log('SW Failed', err));
+                navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW Failed', err));
             });
         }
     </script>
