@@ -12,7 +12,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="icon-192.png">
     
-    <!-- Fonts: Roboto -->
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
@@ -64,25 +64,19 @@
             theme: {
                 extend: {
                     colors: {
-                        dodOrange: '#FF6500', 
-                        dodGreen: '#22C55E',  
+                        dodPurple: '#A855F7', // Raghendh
+                        dodGreen: '#22C55E',  // Devanandh
                         dodBg: '#000000',
-                        dodCard: '#0B192C',   // Deep Navy
-                        dodInput: '#1E3E62',  // Light Navy
+                        dodCard: '#0B192C',
+                        dodInput: '#1E3E62',
                         dodText: '#e5e7eb',
-                        dodSub: '#9ca3af',
                     },
                     fontFamily: {
                         sans: ['Roboto', 'sans-serif'],
                         mono: ['Roboto Mono', 'monospace'],
                     },
                     boxShadow: {
-                        'glow': '0 0 20px rgba(255, 101, 0, 0.15)',
-                    },
-                    transitionProperty: {
-                        'height': 'height',
-                        'spacing': 'margin, padding',
-                        'all': 'all',
+                        'glow': '0 0 20px rgba(255, 255, 255, 0.05)',
                     }
                 }
             }
@@ -116,14 +110,14 @@
 
         const SetupScreen = ({ error }) => (
             <div className="min-h-screen bg-dodBg flex flex-col items-center justify-center p-6 text-center">
-                <i className="ph-fill ph-warning text-5xl text-dodOrange mb-4"></i>
+                <i className="ph-fill ph-warning text-5xl text-dodPurple mb-4"></i>
                 <h1 className="text-3xl font-medium text-white mb-2">Connection Issue</h1>
                 <p className="text-gray-400 mb-6 text-sm">{error?.message || "Could not connect to Firebase."}</p>
             </div>
         );
 
         // 1. SMOOTH MORPHING STOPWATCH
-        const Stopwatch = ({ label, themeColor, isCompact }) => {
+        const Stopwatch = ({ label, theme, progress }) => {
             const [time, setTime] = useState(0);
             const [isRunning, setIsRunning] = useState(false);
             const timerRef = useRef(null);
@@ -150,36 +144,45 @@
             
             const decis = Math.floor((time % 1000) / 100);
 
-            // Dynamic styles based on theme
-            const bgColor = themeColor === 'dodOrange' ? 'bg-dodOrange/20' : 'bg-dodGreen/20';
-            const borderColor = themeColor === 'dodOrange' ? 'border-dodOrange' : 'border-dodGreen';
-            const textColor = themeColor === 'dodOrange' ? 'text-dodOrange' : 'text-dodGreen';
+            // Interpolation Helpers
+            const p = Math.min(Math.max(progress, 0), 1); // Clamp 0-1
+            
+            // Dynamic Styles based on scroll progress
+            const cardBg = theme === 'purple' 
+                ? `linear-gradient(145deg, #A855F7 ${100 - p*50}%, #6b21a8)` 
+                : `linear-gradient(145deg, #22C55E ${100 - p*50}%, #14532d)`;
+            
+            // Tuned Sizes: Start smaller, End larger than before
+            // Start: 2rem time, 1rem padding
+            // End: 1.25rem time, 0.5rem padding
+            const fontSizeTime = 2 - (p * 0.75); 
+            const fontSizeDecis = 1 - (p * 1); // Hides decimal
+            const paddingY = 1 - (p * 0.5); 
+            const buttonOpacity = 1 - (p * 4); // Fades quickly
+            const labelSize = 0.65 - (p * 0.15);
 
             return (
                 <div 
                     onClick={toggle} 
-                    className={`
-                        flex-1 mx-1 rounded-2xl flex flex-col items-center justify-center cursor-pointer 
-                        transition-all duration-500 ease-in-out border overflow-hidden relative
-                        ${isCompact ? 'py-2 px-3 flex-row justify-between bg-black/80 backdrop-blur-md' : 'py-6 px-2 bg-opacity-20'}
-                        ${isRunning ? `${bgColor} ${borderColor} shadow-[0_0_15px_rgba(0,0,0,0.3)]` : 'bg-dodCard border-dodInput'}
-                    `}
+                    className="flex-1 mx-1 rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-transform active:scale-95 shadow-lg overflow-hidden relative border border-white/10"
+                    style={{
+                        background: cardBg,
+                        paddingTop: `${Math.max(0.5, paddingY)}rem`,
+                        paddingBottom: `${Math.max(0.5, paddingY)}rem`,
+                    }}
                 >
-                    {/* Background Tint for Colorfulness */}
-                    {!isCompact && !isRunning && <div className={`absolute inset-0 opacity-5 ${themeColor === 'dodOrange' ? 'bg-dodOrange' : 'bg-dodGreen'}`}></div>}
-
-                    <span className={`font-bold tracking-widest uppercase transition-all duration-500 ${isCompact ? 'text-[10px] mb-0' : 'text-xs mb-1'} ${textColor}`}>
-                        {isCompact ? label.substring(0,3) : label}
+                    <span className="text-xs font-black tracking-widest uppercase mb-0 text-white/80" style={{ fontSize: `${labelSize}rem`, opacity: 0.8 }}>
+                        {label}
                     </span>
                     
-                    <div className={`font-mono font-bold tracking-tighter tabular-nums flex items-baseline transition-all duration-500 ${isCompact ? 'text-xl' : 'text-5xl'} ${isRunning ? 'text-white' : 'text-gray-400'}`}>
+                    <div className="font-mono font-bold tracking-tighter tabular-nums flex items-baseline text-white" style={{ fontSize: `${fontSizeTime}rem`, lineHeight: 1 }}>
                         {format(time)}
-                        <span className={`transition-all duration-500 ${isCompact ? 'text-[0px] opacity-0 w-0' : 'text-2xl opacity-50 w-auto'}`}>.{decis}</span>
+                        <span style={{ fontSize: `${Math.max(0, fontSizeDecis)}rem`, opacity: 0.6, width: p > 0.5 ? 0 : 'auto' }}>.{decis}</span>
                     </div>
                     
-                    {/* Buttons Fade Out on Scroll */}
-                    <div className={`overflow-hidden transition-all duration-500 ${isCompact ? 'h-0 opacity-0 mt-0' : 'h-8 opacity-100 mt-3'}`}>
-                        <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest whitespace-nowrap ${isRunning ? 'bg-white text-dodCard' : 'bg-dodInput text-gray-400'}`}>
+                    {/* Collapsible Button Area */}
+                    <div style={{ height: p > 0.2 ? 0 : 'auto', opacity: Math.max(0, buttonOpacity), marginTop: p > 0.2 ? 0 : '0.5rem', overflow: 'hidden' }}>
+                        <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest bg-black/20 text-white`}>
                             {isRunning ? 'Reset' : 'Start'}
                         </div>
                     </div>
@@ -225,7 +228,7 @@
             // COLLAPSED
             if (!isExpanded) {
                 return (
-                    <div onClick={onToggleExpand} className={`mb-3 rounded-xl p-4 border cursor-pointer flex justify-between items-center shadow-lg transition-colors ${themeBg} ${themeBorder} bg-opacity-20`}>
+                    <div onClick={onToggleExpand} className={`mb-3 rounded-xl p-4 border cursor-pointer flex justify-between items-center shadow-lg transition-colors ${themeBg} ${themeBorder} bg-opacity-20 hover:bg-opacity-30`}>
                         <div>
                             <h3 className="text-white font-bold text-lg">{exercise.name || "New Exercise"}</h3>
                             <p className="text-xs text-gray-300 mt-0.5 font-mono">{exercise.sets?.length || 0} Sets</p>
@@ -238,7 +241,6 @@
             // EXPANDED
             return (
                 <div className={`mb-4 rounded-2xl border overflow-visible shadow-xl fade-in ${themeBg} ${themeBorder} bg-opacity-20`}>
-                    {/* Header */}
                     <div className="flex justify-between items-center p-4 border-b border-white/10 bg-black/20 rounded-t-2xl cursor-pointer" onClick={onToggleExpand}>
                         <div className="flex-1 mr-4 relative">
                             <div className="relative" onClick={(e) => e.stopPropagation()}>
@@ -278,7 +280,6 @@
                         </div>
                     </div>
                     
-                    {/* Notes History */}
                     {showNotesHistory && (
                         <div className="bg-black/30 p-4 max-h-40 overflow-y-auto border-b border-white/10">
                             <h4 className="text-xs text-white/50 font-bold mb-2 uppercase tracking-wide">History</h4>
@@ -293,7 +294,6 @@
                         </div>
                     )}
 
-                    {/* Remark Input */}
                     {showRemark && (
                         <div className="px-4 py-3 bg-black/20 border-b border-white/10">
                             <textarea
@@ -306,7 +306,6 @@
                         </div>
                     )}
                     
-                    {/* Sets */}
                     <div className="p-4 space-y-3">
                         <div className="flex px-1 text-[10px] font-bold text-white/40 tracking-wider">
                             <div className="w-8 text-center">#</div>
@@ -398,19 +397,19 @@
             return (
                 <div className="pt-2 fade-in">
                     {/* Today's Focus Card - Colorful */}
-                    <div className="bg-dodInput p-5 rounded-2xl border border-white/5 mb-6">
+                    <div className={`p-5 rounded-2xl border mb-6 ${themeBg} ${themeBorder} bg-opacity-20`}>
                         <div className="mb-5">
-                            <label className={`text-xs font-bold ${themeText} tracking-wider uppercase mb-3 block`}>Today's Focus (Shared)</label>
+                            <label className="text-xs font-bold text-white/80 tracking-wider uppercase mb-3 block">Today's focus</label>
                             <div className="flex flex-wrap gap-2">
                                 {splits.map(s => (
-                                    <button key={s} onClick={() => updateSharedSplit(s)} className={`px-4 py-1.5 rounded-lg text-sm font-bold border transition-all ${split === s ? `bg-white text-black border-white` : 'border-white/10 text-gray-400 hover:bg-white/5'}`}>
+                                    <button key={s} onClick={() => updateSharedSplit(s)} className={`px-4 py-1.5 rounded-lg text-xs font-bold border transition-all ${split === s ? `bg-white text-black border-white` : 'border-white/10 text-white/50 hover:bg-white/5'}`}>
                                         {s}
                                     </button>
                                 ))}
                             </div>
                         </div>
                         <div>
-                            <label className={`text-xs font-bold ${themeText} tracking-wider uppercase mb-2 block`}>Body Weight</label>
+                            <label className="text-xs font-bold text-white/80 tracking-wider uppercase mb-2 block">Body Weight</label>
                             <div className="bg-black/20 rounded-lg border border-white/10 focus-within:border-white relative">
                                 <input type="number" value={bodyWeight} onChange={(e) => { setBodyWeight(e.target.value); updatePersonalData({bodyWeight: e.target.value}); }} placeholder="0.0" className="w-full bg-transparent p-3 text-white font-mono text-lg border-none focus:ring-0" />
                                 <span className="absolute right-3 top-3.5 text-sm text-gray-500">kg</span>
@@ -479,13 +478,13 @@
                         <div className="grid grid-cols-2 gap-3 px-1">
                             {['raghendh', 'devanandh'].map(u => (
                                 <div key={u}>
-                                    <div className={`text-xs font-bold uppercase mb-3 tracking-widest text-center pb-1 border-b-2 ${u === 'raghendh' ? 'text-dodOrange border-dodOrange' : 'text-dodGreen border-dodGreen'}`}>{u}</div>
+                                    <div className={`text-xs font-bold uppercase mb-3 tracking-widest text-center pb-1 border-b-2 ${u === 'raghendh' ? 'text-dodPurple border-dodPurple' : 'text-dodGreen border-dodGreen'}`}>{u}</div>
                                     <div className="space-y-3">
                                         {searchResults[u].length === 0 && <div className="text-gray-500 text-xs text-center italic">No records</div>}
                                         {searchResults[u].map((item, i) => {
                                             const id = `${u}-${i}`;
                                             return (
-                                                <div key={i} className={`p-3 rounded-xl border border-white/10 ${u === 'raghendh' ? 'bg-dodOrange/10' : 'bg-dodGreen/10'}`}>
+                                                <div key={i} className={`p-3 rounded-xl border border-white/10 ${u === 'raghendh' ? 'bg-dodPurple/20' : 'bg-dodGreen/20'}`}>
                                                     <div className="flex justify-between items-baseline mb-2">
                                                         <span className="text-xs font-bold text-white/50">{item.date}</span>
                                                         {item.bw && <span className="text-[10px] bg-white/10 px-1.5 rounded text-white/70">BW: {item.bw}</span>}
@@ -526,7 +525,7 @@
                                 <div className="p-4 flex justify-between items-center cursor-pointer hover:bg-white/5" onClick={() => setExpandedDay(isExpanded ? null : dateStr)}>
                                     <div>
                                         <h3 className="text-base font-bold text-white">{dateStr}</h3>
-                                        <p className="text-xs text-dodOrange font-medium uppercase tracking-wider mt-0.5">{splitName}</p>
+                                        <p className="text-xs text-dodPurple font-medium uppercase tracking-wider mt-0.5">{splitName}</p>
                                     </div>
                                     <i className={`ph-bold ph-caret-${isExpanded ? 'up' : 'down'} text-gray-400`}></i>
                                 </div>
@@ -535,7 +534,7 @@
                                     <div className="grid grid-cols-2 divide-x divide-dodInput border-t border-dodInput bg-black/20 fade-in">
                                         {['raghendh', 'devanandh'].map(u => {
                                             const uData = dayData[u];
-                                            const color = u === 'raghendh' ? 'text-dodOrange' : 'text-dodGreen';
+                                            const color = u === 'raghendh' ? 'text-dodPurple' : 'text-dodGreen';
                                             return (
                                                 <div key={u} className="p-3">
                                                     <div className={`text-xs font-black uppercase mb-3 tracking-widest ${color}`}>{u}</div>
@@ -616,19 +615,19 @@
                     <h2 className="text-xl font-medium text-white mb-4 ml-1">Exercise Library</h2>
                     <div className="flex flex-wrap gap-2 mb-6">
                         {splits.map(s => (
-                            <button key={s} onClick={() => setSelectedSplit(s)} className={`px-4 py-1.5 rounded-lg text-sm font-medium border transition-all ${selectedSplit === s ? 'bg-dodOrange border-dodOrange text-white' : 'bg-transparent border-gray-600 text-gray-400'}`}>
+                            <button key={s} onClick={() => setSelectedSplit(s)} className={`px-4 py-1.5 rounded-lg text-sm font-medium border transition-all ${selectedSplit === s ? 'bg-dodPurple border-dodPurple text-white' : 'bg-transparent border-white/20 text-gray-400'}`}>
                                 {s}
                             </button>
                         ))}
                     </div>
                     
                     <div className="bg-dodCard rounded-xl border border-dodInput p-4 shadow-sm">
-                        <h3 className="text-dodOrange text-xs uppercase tracking-widest font-bold mb-4">{selectedSplit} Exercises ({exercises.length})</h3>
+                        <h3 className="text-dodPurple text-xs uppercase tracking-widest font-bold mb-4">{selectedSplit} Exercises ({exercises.length})</h3>
                         <div className="space-y-3">
                             {exercises.length === 0 ? <div className="text-gray-500 italic text-sm">No exercises found for this split.</div> : 
                                 exercises.map((ex, i) => (
                                     <div key={i} className="py-2 border-b border-dodInput last:border-0 text-sm text-white flex items-center gap-3">
-                                        <i className="ph-fill ph-barbell text-dodOrange text-lg"></i> {ex}
+                                        <i className="ph-fill ph-barbell text-dodPurple text-lg"></i> {ex}
                                     </div>
                                 ))
                             }
@@ -645,11 +644,18 @@
             const [authError, setAuthError] = useState(null);
             const [allHistory, setAllHistory] = useState(null);
             
-            const [isScrolled, setIsScrolled] = useState(false);
+            const [scrollP, setScrollP] = useState(0);
             const mainRef = useRef(null);
 
+            // Updated Max Height Calculation
+            // Changed to 255px per request
+            const maxHeight = 255; 
+            const minHeight = 110;
+            const scrollRange = maxHeight - minHeight; // 145px range
+
             const handleScroll = (e) => {
-                setIsScrolled(e.target.scrollTop > 50);
+                const p = Math.min(e.target.scrollTop / scrollRange, 1);
+                setScrollP(p);
             };
 
             useEffect(() => {
@@ -665,41 +671,57 @@
             if (!isAuth) return (
                 <div className="h-screen bg-dodBg flex flex-col items-center justify-center">
                     <h1 className="text-6xl font-black text-white tracking-tighter italic animate-pulse">DOD</h1>
-                    <p className="text-dodOrange text-xs font-bold tracking-[0.5em] uppercase mt-2">Loading Gym...</p>
+                    <p className="text-dodPurple text-xs font-bold tracking-[0.5em] uppercase mt-2">Loading Gym...</p>
                 </div>
             );
 
             return (
                 <div className="max-w-md mx-auto h-screen bg-dodBg relative font-sans text-white overflow-hidden flex flex-col">
+                    {/* FIXED HEADER */}
+                    <div 
+                        className="fixed top-0 max-w-md w-full z-40 bg-dodBg/95 backdrop-blur-sm border-b border-white/5 transition-all duration-300 ease-out"
+                        style={{
+                            height: `${maxHeight - (scrollP * scrollRange)}px`, // 255 -> 110
+                            paddingTop: '1rem',
+                            paddingBottom: '0.5rem'
+                        }}
+                    >
+                        {/* Title Section (Fades Out) */}
+                        <div 
+                            className="px-4 flex items-end justify-between mb-4 overflow-hidden"
+                            style={{
+                                opacity: 1 - (scrollP * 3), 
+                                height: `${Math.max(0, 60 - (scrollP * 120))}px`,
+                                marginBottom: `${Math.max(0, 16 - (scrollP * 32))}px`
+                            }}
+                        >
+                            <div>
+                                <h1 className="text-5xl font-black text-white leading-none tracking-tighter italic">DOD</h1>
+                                <p className="text-dodPurple text-[0.6rem] font-bold tracking-[0.6em] uppercase pl-1">do or die</p>
+                            </div>
+                            <div className="text-[10px] font-bold text-gray-400 bg-dodInput px-3 py-1 rounded-full border border-dodInput">{getTodayDateString()}</div>
+                        </div>
+                        
+                        {/* Stopwatches (Always Visible, scale down) */}
+                        <div className="flex justify-between -mx-1 px-4 h-full">
+                            <Stopwatch label="RAGHENDH" theme="purple" progress={scrollP} />
+                            <Stopwatch label="DEVANANDH" theme="green" progress={scrollP} />
+                        </div>
+                    </div>
+
                     {/* SCROLLABLE MAIN CONTAINER */}
                     <main 
                         ref={mainRef}
                         onScroll={handleScroll}
-                        className="flex-1 overflow-y-auto no-scrollbar scroll-smooth"
+                        className="flex-1 overflow-y-auto no-scrollbar scroll-smooth relative"
                     >
-                        
-                        {/* HEADER (Sticky) */}
-                        <div className={`sticky top-0 z-30 transition-all duration-300 ${isScrolled ? 'bg-dodBg/90 backdrop-blur-md pt-2 pb-2 shadow-xl' : 'bg-dodBg pt-6 pb-2'}`}>
-                            {/* Title & Date (Hide on Scroll) */}
-                            <div className={`px-4 flex items-end justify-between mb-4 transition-all duration-300 origin-top ${isScrolled ? 'h-0 opacity-0 overflow-hidden mb-0 scale-y-0' : 'h-auto opacity-100 scale-y-100'}`}>
-                                <div>
-                                    <h1 className="text-5xl font-black text-white leading-none tracking-tighter italic">DOD</h1>
-                                    <p className="text-dodOrange text-[0.6rem] font-bold tracking-[0.6em] uppercase pl-1">do or die</p>
-                                </div>
-                                <div className="text-[10px] font-bold text-gray-400 bg-dodInput px-3 py-1 rounded-full border border-dodInput">{getTodayDateString()}</div>
-                            </div>
-                            
-                            {/* Stopwatches */}
-                            <div className="flex justify-between -mx-1 px-4">
-                                <Stopwatch label="RAGHENDH" themeColor="dodOrange" isCompact={isScrolled} />
-                                <Stopwatch label="DEVANANDH" themeColor="dodGreen" isCompact={isScrolled} />
-                            </div>
-                        </div>
+                        {/* Invisible spacer fixed to 320px to remain same as previous state */}
+                        <div style={{ height: '320px' }}></div> 
 
                         {/* CONTENT */}
                         <div className="px-4 pb-32">
-                            {tab === 'raghendh' && <WorkoutLogger userKey="raghendh" allHistory={allHistory} themeBg="bg-dodOrange/10" themeBorder="border-dodOrange/50" themeText="text-dodOrange" />}
-                            {tab === 'devanandh' && <WorkoutLogger userKey="devanandh" allHistory={allHistory} themeBg="bg-dodGreen/10" themeBorder="border-dodGreen/50" themeText="text-dodGreen" />}
+                            {tab === 'raghendh' && <WorkoutLogger userKey="raghendh" allHistory={allHistory} themeBg="bg-dodPurple" themeBorder="border-dodPurple" themeText="text-dodPurple" />}
+                            {tab === 'devanandh' && <WorkoutLogger userKey="devanandh" allHistory={allHistory} themeBg="bg-dodGreen" themeBorder="border-dodGreen" themeText="text-dodGreen" />}
                             {tab === 'history' && <HistoryPage historyData={allHistory} />}
                             {tab === 'library' && <LibraryPage historyData={allHistory} />}
                         </div>
@@ -708,13 +730,13 @@
                     {/* BOTTOM NAVIGATION (Solid Opaque Navy) */}
                     <nav className="absolute bottom-0 w-full bg-dodCard h-14 flex justify-around items-center border-t border-dodInput z-50 shadow-2xl">
                         {[
-                            { id: 'raghendh', icon: 'ph-barbell', label: 'Raghendh', color: 'dodOrange' },
+                            { id: 'raghendh', icon: 'ph-barbell', label: 'Raghendh', color: 'dodPurple' },
                             { id: 'devanandh', icon: 'ph-sneaker-move', label: 'Devanandh', color: 'dodGreen' },
                             { id: 'history', icon: 'ph-clock-counter-clockwise', label: 'History', color: 'white' },
                             { id: 'library', icon: 'ph-books', label: 'Library', color: 'white' }
                         ].map(item => {
                             const isActive = tab === item.id;
-                            const activeClass = item.id === 'raghendh' ? 'text-dodOrange' : item.id === 'devanandh' ? 'text-dodGreen' : 'text-white';
+                            const activeClass = item.id === 'raghendh' ? 'text-dodPurple' : item.id === 'devanandh' ? 'text-dodGreen' : 'text-white';
                             
                             return (
                                 <button key={item.id} onClick={() => setTab(item.id)} className="flex flex-col items-center justify-center w-16 group">
