@@ -138,6 +138,229 @@
             return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
         };
 
+        const calculateAge = (dobString) => {
+            const dob = new Date(dobString);
+            const diff_ms = Date.now() - dob.getTime();
+            const age_dt = new Date(diff_ms);
+            return Math.abs(age_dt.getUTCFullYear() - 1970);
+        };
+
+        // Static User Data
+        const USER_DATA = {
+            raghendh: {
+                name: "Raghendh",
+                dob: "1999-12-17",
+                height: 178.5,
+                color: "text-primary",
+                bg: "bg-primary",
+                shadow: "shadow-neon-purple"
+            },
+            devanandh: {
+                name: "Devanandh",
+                dob: "2004-01-12",
+                height: 175,
+                color: "text-secondary",
+                bg: "bg-secondary",
+                shadow: "shadow-neon-green"
+            }
+        };
+
+        // --- CHART COMPONENT ---
+        const ProgressChart = ({ data, color, type, onClose }) => {
+            const [filter, setFilter] = useState('day'); // day, week, month, year
+
+            // Process data based on filter
+            const chartData = useMemo(() => {
+                if (!data || data.length === 0) return [];
+                
+                // Sort raw data by date
+                const sorted = [...data].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                if (filter === 'day') return sorted.slice(-30); // Last 30 entries
+
+                // Grouping Logic
+                const grouped = {};
+                sorted.forEach(item => {
+                    const date = new Date(item.date);
+                    let key;
+                    if (filter === 'week') {
+                        // Simple ISO week approx
+                        const onejan = new Date(date.getFullYear(), 0, 1);
+                        const week = Math.ceil((((date.getTime() - onejan.getTime()) / 86400000) + onejan.getDay() + 1) / 7);
+                        key = `${date.getFullYear()}-W${week}`;
+                    } else if (filter === 'month') {
+                        key = `${date.getFullYear()}-${date.getMonth() + 1}`;
+                    } else if (filter === 'year') {
+                        key = `${date.getFullYear()}`;
+                    }
+                    
+                    if (!grouped[key]) grouped[key] = { sum: 0, count: 0, label: key };
+                    grouped[key].sum += parseFloat(item.value);
+                    grouped[key].count += 1;
+                });
+
+                return Object.values(grouped).map(g => ({
+                    date: g.label,
+                    value: (g.sum / g.count).toFixed(1)
+                })).slice(-12); // Limit to last 12 points for cleaner UI
+
+            }, [data, filter]);
+
+            // Chart Configuration
+            const width = 100;
+            const height = 60;
+            const paddingX = 10;
+            const paddingY = 10;
+            const graphWidth = width - paddingX * 2;
+            const graphHeight = height - paddingY * 2;
+
+            // Axis Logic
+            const vals = chartData.map(d => parseFloat(d.value));
+            const minVal = vals.length ? Math.min(...vals) - 1 : 0;
+            const maxVal = vals.length ? Math.max(...vals) + 1 : 10;
+            const range = maxVal - minVal;
+
+            // Determine Hex Color
+            const strokeHex = color.includes('primary') ? '#a855f7' : '#22c55e';
+
+            // Point Calculation
+            const points = useMemo(() => {
+                if (chartData.length < 2) return [];
+                const step = graphWidth / (chartData.length - 1);
+                return chartData.map((d, i) => {
+                    const x = paddingX + i * step;
+                    const y = (height - paddingY) - ((parseFloat(d.value) - minVal) / range) * graphHeight;
+                    return [x, y];
+                });
+            }, [chartData, minVal, range, graphWidth, graphHeight]);
+
+            // Path Generation
+            const linePath = useMemo(() => {
+                if (points.length === 0) return "";
+                return points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p[0]},${p[1]}`).join(" ");
+            }, [points]);
+
+            const areaPath = useMemo(() => {
+                if (points.length === 0) return "";
+                const lastPoint = points[points.length - 1];
+                const firstPoint = points[0];
+                return `${linePath} L ${lastPoint[0]},${height - paddingY} L ${firstPoint[0]},${height - paddingY} Z`;
+            }, [linePath, points, height, paddingY]);
+
+            const formatDateLabel = (label) => {
+                if(filter === 'day') {
+                    const d = new Date(label);
+                    return `${d.getDate()}/${d.getMonth()+1}`;
+                }
+                if(filter === 'month') {
+                    const [y, m] = label.split('-');
+                    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                    return months[parseInt(m)-1];
+                }
+                return label.split('-').pop(); // Shorten week/year
+            };
+
+            return (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl fade-in">
+                    <div className="bg-surface/50 border border-white/10 rounded-[2rem] w-full max-w-sm p-8 relative shadow-2xl overflow-hidden backdrop-blur-md">
+                        
+                        {/* Background Glow */}
+                        <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-40 h-40 rounded-full blur-[80px] opacity-20 pointer-events-none ${color.replace('text-', 'bg-')}`}></div>
+
+                        <button onClick={onClose} className="absolute top-4 right-4 text-textMuted hover:text-white p-2 rounded-full hover:bg-white/10 transition-colors z-20">
+                            <i className="ph-bold ph-x text-xl"></i>
+                        </button>
+                        
+                        <div className="relative z-10 text-center">
+                            <h3 className="text-4xl font-teko font-bold text-textMain mb-0 leading-none uppercase tracking-wide">{type} Progress</h3>
+                            <p className="text-xs text-textMuted mb-8 uppercase tracking-[0.2em] font-medium">Analytics Overview</p>
+
+                            <div className="flex bg-black/40 rounded-xl p-1 mb-8 backdrop-blur-sm border border-white/5">
+                                {['day', 'week', 'month', 'year'].map(f => (
+                                    <button 
+                                        key={f} 
+                                        onClick={() => setFilter(f)}
+                                        className={`flex-1 py-2 rounded-lg text-[10px] font-bold uppercase transition-all ${filter === f ? 'bg-textMain text-bg shadow-lg' : 'text-textMuted hover:text-white'}`}
+                                    >
+                                        {f}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* Chart Area */}
+                            <div className="h-56 w-full mb-2 relative">
+                                {chartData.length > 0 ? (
+                                    <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="w-full h-full overflow-visible font-mono text-[3px]">
+                                        <defs>
+                                            <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="0%" stopColor={strokeHex} stopOpacity="0.3" />
+                                                <stop offset="100%" stopColor={strokeHex} stopOpacity="0" />
+                                            </linearGradient>
+                                        </defs>
+
+                                        {/* Grid Lines & Y Axis Labels */}
+                                        {[0, 0.5, 1].map((ratio, i) => {
+                                            const y = (height - paddingY) - (graphHeight * ratio);
+                                            const val = (minVal + (range * ratio)).toFixed(1);
+                                            return (
+                                                <g key={i}>
+                                                    <line x1={paddingX} y1={y} x2={width - paddingX} y2={y} stroke="rgba(255,255,255,0.05)" strokeWidth="0.2" strokeDasharray="1,1" />
+                                                    <text x={width - paddingX + 2} y={y + 1} fill="#71717a" textAnchor="start">{val}</text>
+                                                </g>
+                                            )
+                                        })}
+
+                                        {/* X Axis Labels */}
+                                        {chartData.length > 1 && (
+                                            <>
+                                                <text x={paddingX} y={height - 2} fill="#71717a" textAnchor="middle">{formatDateLabel(chartData[0].date)}</text>
+                                                <text x={width/2} y={height - 2} fill="#71717a" textAnchor="middle">{formatDateLabel(chartData[Math.floor(chartData.length/2)].date)}</text>
+                                                <text x={width - paddingX} y={height - 2} fill="#71717a" textAnchor="middle">{formatDateLabel(chartData[chartData.length-1].date)}</text>
+                                            </>
+                                        )}
+                                        
+                                        {/* Area Fill */}
+                                        <path 
+                                            d={areaPath} 
+                                            fill="url(#chartGradient)" 
+                                        />
+
+                                        {/* The Line */}
+                                        <path 
+                                            d={linePath} 
+                                            fill="none" 
+                                            stroke={strokeHex} 
+                                            strokeWidth="0.8" 
+                                            strokeLinecap="round" 
+                                            strokeLinejoin="round"
+                                            filter={`drop-shadow(0 0 4px ${strokeHex})`}
+                                        />
+                                        
+                                        {/* Last Data Point */}
+                                        {(() => {
+                                            const last = points[points.length - 1];
+                                            if(!last) return null;
+                                            return (
+                                                <g>
+                                                    <circle cx={last[0]} cy={last[1]} r="2" fill={strokeHex} opacity="0.3" className="animate-ping" />
+                                                    <circle cx={last[0]} cy={last[1]} r="1.5" fill="white" />
+                                                </g>
+                                            )
+                                        })()}
+                                    </svg>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center h-full text-textMuted opacity-50">
+                                        <i className="ph-duotone ph-chart-line-up text-4xl mb-2"></i>
+                                        <span className="text-xs">No data available</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
         // --- COMPONENTS ---
 
         const SetupScreen = ({ error }) => (
@@ -150,13 +373,11 @@
             </div>
         );
 
-        // 1. MODERN WIDGET STOPWATCH
+        // 1. MODERN WIDGET STOPWATCH (No changes)
         const StopwatchWidget = ({ label, colorClass, shadowClass }) => {
             const [time, setTime] = useState(0);
             const [isRunning, setIsRunning] = useState(false);
             const timerRef = useRef(null);
-            
-            // Extract the color name (primary/secondary) for the background class
             const bgClass = colorClass.replace('text-', 'bg-');
 
             const toggle = () => {
@@ -168,7 +389,7 @@
                     const startTime = Date.now() - time;
                     timerRef.current = setInterval(() => {
                         setTime(Date.now() - startTime);
-                    }, 50); // Faster update for smoothness
+                    }, 50); 
                     setIsRunning(true);
                 }
             };
@@ -185,23 +406,17 @@
             return (
                 <div 
                     onClick={toggle} 
-                    // Changed: Added conditional classes for active state (background color, border transparent)
                     className={`relative flex-1 rounded-[2rem] p-5 cursor-pointer overflow-hidden transition-all duration-300 active:scale-95 border h-44 flex flex-col justify-between group
                     ${isRunning ? `${bgClass} border-transparent shadow-lg scale-[1.02]` : `border-white/5 ${shadowClass}`}`}
                     style={{ background: isRunning ? undefined : 'linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0) 100%)' }}
                 >
-                    {/* Background Glow - Only show when NOT running to avoid visual noise on solid bg */}
                     {!isRunning && <div className={`absolute -right-6 -top-6 w-28 h-28 rounded-full blur-3xl opacity-20 ${bgClass}`}></div>}
-                    
                     <div className="relative z-10 mt-1">
-                        {/* Changed: Text color becomes white/black based on state */}
                         <span className={`font-teko text-5xl font-bold tracking-wide uppercase leading-none block transition-colors ${isRunning ? 'text-bg mix-blend-screen' : `${colorClass} opacity-90`}`}>
                             {label}
                         </span>
                     </div>
-
                     <div className="flex items-baseline gap-0.5 relative z-10 mb-1">
-                        {/* Changed: Reduced size to 4.5rem to fit better. Color changes to white when running. */}
                         <span className={`font-teko text-[4.5rem] font-semibold leading-[0.75] tracking-tight transition-colors ${isRunning ? 'text-white' : 'text-textMain'}`}>
                             {mins}:{secs}
                         </span>
@@ -209,8 +424,6 @@
                             {decis}
                         </span>
                     </div>
-                    
-                    {/* Status Indicator */}
                     <div className={`absolute bottom-5 right-5 w-2 h-2 rounded-full transition-colors duration-300 ${isRunning ? 'bg-white animate-pulse' : 'bg-white/10'}`}></div>
                 </div>
             );
@@ -251,7 +464,6 @@
             const removeSet = (sIndex) => updateExercise(exIndex, { ...exercise, sets: exercise.sets.filter((_, i) => i !== sIndex) });
             const handleNameSelect = (name) => { updateExercise(exIndex, { ...exercise, name: name }); setShowSuggestions(false); };
 
-            // COMPACT VIEW
             if (!isExpanded) {
                 return (
                     <div onClick={onToggleExpand} className="glass-panel rounded-2xl p-4 mb-3 flex justify-between items-center cursor-pointer hover:bg-white/5 transition-colors group">
@@ -274,7 +486,6 @@
                 );
             }
 
-            // EXPANDED EDIT VIEW
             return (
                 <div className="glass-panel rounded-3xl mb-4 overflow-visible fade-in ring-1 ring-white/10">
                     <div className="p-5 border-b border-border flex justify-between items-start gap-4">
@@ -518,10 +729,10 @@
             );
         };
 
-        // 4. TIMELINE WIDGET (HISTORY)
+        // 4. TIMELINE WIDGET (HISTORY) (No Changes)
         const Timeline = ({ historyData }) => {
             const [searchTerm, setSearchTerm] = useState("");
-            const [expandedDate, setExpandedDate] = useState(null); // Updated: Track expanded date
+            const [expandedDate, setExpandedDate] = useState(null); 
             const [viewRemarks, setViewRemarks] = useState({});
             
             const toggleRemark = (id) => setViewRemarks(prev => ({...prev, [id]: !prev[id]}));
@@ -576,7 +787,6 @@
 
             return (
                 <div className="pb-24 pt-2 fade-in">
-                    {/* Changed: Removed sticky and top positioning */}
                     <div className="glass-panel rounded-2xl p-2 mb-4 flex items-center gap-3 shadow-glass">
                         <div className="w-10 h-10 rounded-xl bg-surface flex items-center justify-center text-textMuted">
                             <i className="ph-bold ph-magnifying-glass text-xl"></i>
@@ -638,7 +848,6 @@
                                             {dateStr.split('-')[2]}
                                         </div>
                                         
-                                        {/* Updated: Accordion Style */}
                                         <div className="glass-panel rounded-2xl mb-4 overflow-hidden">
                                             <div 
                                                 className="p-4 flex justify-between items-center cursor-pointer hover:bg-white/5 transition-colors"
@@ -769,8 +978,184 @@
             );
         };
 
+        // --- NEW COMPONENTS ---
+
+        const ProfileSelector = ({ onSelect }) => (
+            <div className="fade-in pt-10 px-6">
+                <h2 className="text-2xl font-bold text-textMain mb-8 text-center">Select Profile</h2>
+                <div className="space-y-6">
+                    {Object.entries(USER_DATA).map(([key, data]) => (
+                        <div 
+                            key={key} 
+                            onClick={() => onSelect(key)}
+                            className="glass-panel rounded-3xl h-32 flex items-center justify-center cursor-pointer hover:bg-white/5 transition-transform active:scale-95 group relative overflow-hidden"
+                        >
+                            <div className={`absolute right-[-20px] top-[-20px] w-32 h-32 rounded-full blur-3xl opacity-20 group-hover:opacity-40 transition-opacity ${data.bg}`}></div>
+                            <h3 className={`text-4xl font-teko font-bold uppercase tracking-wide ${data.color} relative z-10`}>{data.name}</h3>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+
+        const ProfileStats = ({ userKey, allHistory, onBack }) => {
+            const staticData = USER_DATA[userKey];
+            
+            // 1. Get Live Data from Firebase (if exists), fallback to static
+            const profileData = allHistory?.profiles?.[userKey] || {};
+            const height = profileData.height || staticData.height;
+            const dob = profileData.dob || staticData.dob; // In case we want to edit DOB later
+
+            const [showWeightChart, setShowWeightChart] = useState(false);
+            const [showBMIChart, setShowBMIChart] = useState(false);
+            
+            // Local state for editing
+            const [localHeight, setLocalHeight] = useState(height);
+            const [isEditingHeight, setIsEditingHeight] = useState(false);
+            
+            // Sync local state when database updates (e.g., initial load)
+            useEffect(() => {
+                setLocalHeight(height);
+            }, [height]);
+
+            // Save to Firebase
+            const saveHeight = () => {
+                if (window.db) {
+                    window.update(window.ref(window.db, `profiles/${userKey}`), { 
+                        height: localHeight 
+                    }).then(() => {
+                        setIsEditingHeight(false);
+                    }).catch(console.error);
+                }
+            };
+            
+            // Calculate Stats
+            const age = calculateAge(dob);
+            
+            // Get Weight History
+            const weightHistory = useMemo(() => {
+                if(!allHistory) return [];
+                const history = [];
+                Object.entries(allHistory).forEach(([date, dayData]) => {
+                    const bw = dayData[userKey]?.bodyWeight;
+                    if(bw) history.push({ date, value: bw });
+                });
+                return history.sort((a,b) => new Date(a.date) - new Date(b.date));
+            }, [allHistory, userKey]);
+
+            // Current Weight (Last recorded)
+            const currentWeight = weightHistory.length > 0 ? parseFloat(weightHistory[weightHistory.length - 1].value) : 0;
+            
+            // BMI using LIVE height
+            // We use 'height' (from DB) for display/calc, unless editing
+            const displayHeight = isEditingHeight ? localHeight : height;
+            const bmi = currentWeight > 0 ? (currentWeight / ((displayHeight/100) ** 2)).toFixed(1) : "--";
+            
+            // Generate BMI History for Chart
+            const bmiHistory = weightHistory.map(w => ({
+                date: w.date,
+                value: (parseFloat(w.value) / ((displayHeight/100) ** 2)).toFixed(1)
+            }));
+
+            return (
+                <div className="fade-in pt-4 px-5 pb-10">
+                    <button onClick={onBack} className="mb-6 flex items-center gap-2 text-textMuted hover:text-white">
+                        <i className="ph-bold ph-arrow-left"></i> Back to profiles
+                    </button>
+                    
+                    <div className="mb-8">
+                        <h1 className={`text-4xl font-teko font-bold uppercase ${staticData.color}`}>{staticData.name}</h1>
+                        <p className="text-sm text-textMuted font-mono uppercase tracking-widest">Born: {dob}</p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        {/* Age Card */}
+                        <div className="glass-panel rounded-3xl p-5 flex flex-col justify-between h-40">
+                            <div className="text-textMuted"><i className="ph-duotone ph-cake text-2xl"></i></div>
+                            <div>
+                                <span className="text-4xl font-bold text-textMain">{age}</span>
+                                <span className="text-xs text-textMuted font-bold uppercase tracking-wider block">Years Old</span>
+                            </div>
+                        </div>
+
+                        {/* Height Card (Editable) */}
+                        <div className="glass-panel rounded-3xl p-5 flex flex-col justify-between h-40 relative group">
+                            <button 
+                                onClick={() => {
+                                    if (isEditingHeight) {
+                                        saveHeight();
+                                    } else {
+                                        setIsEditingHeight(true);
+                                    }
+                                }}
+                                className={`absolute top-4 right-4 p-2 rounded-full transition-colors ${isEditingHeight ? 'bg-secondary text-white shadow-neon-green' : 'text-textMuted hover:text-white bg-white/5'}`}
+                            >
+                                <i className={`ph-bold ${isEditingHeight ? 'ph-check' : 'ph-pencil-simple'}`}></i>
+                            </button>
+                            
+                            <div className="text-textMuted"><i className="ph-duotone ph-ruler text-2xl"></i></div>
+                            <div>
+                                {isEditingHeight ? (
+                                    <input 
+                                        type="number" 
+                                        autoFocus
+                                        value={localHeight} 
+                                        onChange={(e) => setLocalHeight(e.target.value)} 
+                                        className="text-4xl font-bold text-textMain bg-transparent border-b border-white/20 w-24 p-0 focus:ring-0" 
+                                    />
+                                ) : (
+                                    <span className="text-4xl font-bold text-textMain">{height}</span>
+                                )}
+                                <span className="text-xs text-textMuted font-bold uppercase tracking-wider block">CM Height</span>
+                            </div>
+                        </div>
+
+                        {/* Weight Card - Clickable */}
+                        <div 
+                            onClick={() => setShowWeightChart(true)}
+                            className="glass-panel rounded-3xl p-5 flex flex-col justify-between h-40 col-span-2 cursor-pointer hover:bg-white/5 transition-colors relative overflow-hidden"
+                        >
+                            <div className={`absolute right-[-20px] top-[-20px] w-40 h-40 rounded-full blur-3xl opacity-10 ${staticData.bg}`}></div>
+                            <div className="flex justify-between items-start">
+                                <div className="text-textMuted"><i className="ph-duotone ph-scales text-2xl"></i></div>
+                                <i className="ph-bold ph-chart-line-up text-textMuted"></i>
+                            </div>
+                            <div>
+                                <span className="text-5xl font-bold text-textMain">{currentWeight || "--"}</span>
+                                <span className="text-sm text-textMuted font-bold uppercase tracking-wider ml-1">KG</span>
+                                <span className="text-xs text-textMuted font-bold uppercase tracking-wider block mt-1">Current Weight</span>
+                            </div>
+                        </div>
+
+                        {/* BMI Card - Clickable */}
+                        <div 
+                            onClick={() => setShowBMIChart(true)}
+                            className="glass-panel rounded-3xl p-5 flex flex-col justify-between h-40 col-span-2 cursor-pointer hover:bg-white/5 transition-colors relative overflow-hidden"
+                        >
+                            <div className="flex justify-between items-start">
+                                <div className="text-textMuted"><i className="ph-duotone ph-activity text-2xl"></i></div>
+                                <i className="ph-bold ph-chart-bar text-textMuted"></i>
+                            </div>
+                            <div>
+                                <span className={`text-5xl font-bold ${bmi > 25 ? 'text-orange-400' : bmi < 18.5 ? 'text-blue-400' : 'text-green-400'}`}>{bmi}</span>
+                                <span className="text-xs text-textMuted font-bold uppercase tracking-wider block mt-1">BMI Score</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Modals */}
+                    {showWeightChart && <ProgressChart data={weightHistory} color={staticData.color} type="Weight" onClose={() => setShowWeightChart(false)} />}
+                    {showBMIChart && <ProgressChart data={bmiHistory} color={staticData.color} type="BMI" onClose={() => setShowBMIChart(false)} />}
+                </div>
+            );
+        };
+
+
         // --- APP LAYOUT ---
         const Layout = () => {
+            const [view, setView] = useState("main"); // main, profiles, profile-detail
+            const [selectedProfile, setSelectedProfile] = useState(null);
+            
             const [tab, setTab] = useState("raghendh");
             const [isAuth, setIsAuth] = useState(false);
             const [authError, setAuthError] = useState(null);
@@ -805,6 +1190,11 @@
                 devanandh: { text: 'text-secondary', bg: 'bg-secondary', shadow: 'neon-green', gradient: 'from-green-500 to-emerald-500' }
             };
 
+            const handleProfileSelect = (key) => {
+                setSelectedProfile(key);
+                setView('profile-detail');
+            };
+
             return (
                 <div className="max-w-md mx-auto h-screen bg-bg text-textMain relative overflow-hidden flex flex-col font-sans">
                     {/* Ambient Background Mesh */}
@@ -814,56 +1204,81 @@
                     {/* Main Scrollable Content */}
                     <main className="flex-1 overflow-y-auto no-scrollbar scroll-smooth px-5 pb-5">
                         
-                        {/* Changed: Title is now inside scrollable area (scrolls away) */}
+                        {/* Header (Always Visible) */}
                         <div className="pt-6 pb-2">
                             <div className="flex justify-between items-center mb-4">
                                 <div>
                                     <h1 className="font-teko text-3xl font-bold leading-none tracking-wide text-white">DO OR DIE</h1>
                                     <p className="text-[10px] font-bold text-textMuted uppercase tracking-widest">{formatDatePretty()}</p>
                                 </div>
-                                <div className="w-8 h-8 rounded-full bg-surface border border-border flex items-center justify-center">
-                                    <i className="ph-bold ph-user text-textMuted"></i>
+                                
+                                {/* Changed: User Icon acts as button to switch views */}
+                                <button 
+                                    onClick={() => setView(view === 'main' ? 'profiles' : 'main')}
+                                    className={`w-8 h-8 rounded-full border flex items-center justify-center transition-colors ${view !== 'main' ? 'bg-textMain border-textMain text-bg' : 'bg-surface border-border text-textMuted'}`}
+                                >
+                                    {view === 'main' ? <i className="ph-bold ph-user"></i> : <i className="ph-bold ph-house"></i>}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* VIEW: MAIN DASHBOARD */}
+                        {view === 'main' && (
+                            <div className="fade-in">
+                                {/* Stopwatches (Only in main view) */}
+                                <div className="sticky top-0 z-40 py-2 bg-bg/95 backdrop-blur-xl -mx-5 px-5 border-b border-white/5 mb-4 shadow-glass transition-all">
+                                    <div className="flex gap-3">
+                                        <StopwatchWidget label="Ragh" colorClass="text-primary" shadowClass="shadow-neon-purple" />
+                                        <StopwatchWidget label="Dev" colorClass="text-secondary" shadowClass="shadow-neon-green" />
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
 
-                        {/* Changed: Stopwatches are in sticky container, moved inside scrollview */}
-                        <div className="sticky top-0 z-40 py-2 bg-bg/95 backdrop-blur-xl -mx-5 px-5 border-b border-white/5 mb-4 shadow-glass transition-all">
-                            <div className="flex gap-3">
-                                <StopwatchWidget label="Ragh" colorClass="text-primary" shadowClass="shadow-neon-purple" />
-                                <StopwatchWidget label="Dev" colorClass="text-secondary" shadowClass="shadow-neon-green" />
+                                {/* Tab Content */}
+                                {tab === 'raghendh' && <Dashboard userKey="raghendh" allHistory={allHistory} colorTheme={themes.raghendh} />}
+                                {tab === 'devanandh' && <Dashboard userKey="devanandh" allHistory={allHistory} colorTheme={themes.devanandh} />}
+                                {tab === 'history' && <Timeline historyData={allHistory} />}
+                                {tab === 'library' && <Catalog historyData={allHistory} />}
                             </div>
-                        </div>
+                        )}
 
-                        {/* Tab Content */}
-                        {tab === 'raghendh' && <Dashboard userKey="raghendh" allHistory={allHistory} colorTheme={themes.raghendh} />}
-                        {tab === 'devanandh' && <Dashboard userKey="devanandh" allHistory={allHistory} colorTheme={themes.devanandh} />}
-                        {tab === 'history' && <Timeline historyData={allHistory} />}
-                        {tab === 'library' && <Catalog historyData={allHistory} />}
+                        {/* VIEW: PROFILE SELECTION */}
+                        {view === 'profiles' && <ProfileSelector onSelect={handleProfileSelect} />}
+
+                        {/* VIEW: PROFILE DETAILS */}
+                        {view === 'profile-detail' && selectedProfile && (
+                            <ProfileStats 
+                                userKey={selectedProfile} 
+                                allHistory={allHistory} 
+                                onBack={() => setView('profiles')} 
+                            />
+                        )}
+
                     </main>
 
-                    {/* Floating Island Navigation */}
-                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50">
-                        <nav className="glass-panel rounded-2xl px-2 py-2 flex items-center gap-1 shadow-glass border border-white/10 scale-100 origin-bottom hover:scale-105 transition-transform duration-300">
-                            {[
-                                { id: 'raghendh', icon: 'ph-barbell', activeColor: 'bg-primary text-white shadow-neon-purple' },
-                                { id: 'devanandh', icon: 'ph-sneaker-move', activeColor: 'bg-secondary text-white shadow-neon-green' },
-                                { id: 'history', icon: 'ph-clock-counter-clockwise', activeColor: 'bg-textMain text-bg' },
-                                { id: 'library', icon: 'ph-books', activeColor: 'bg-textMain text-bg' }
-                            ].map(item => {
-                                const isActive = tab === item.id;
-                                return (
-                                    <button 
-                                        key={item.id} 
-                                        onClick={() => setTab(item.id)} 
-                                        className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 ${isActive ? item.activeColor : 'text-textMuted hover:bg-white/5 hover:text-textMain'}`}
-                                    >
-                                        <i className={`${isActive ? 'ph-fill' : 'ph-bold'} ${item.icon} text-xl`}></i>
-                                    </button>
-                                );
-                            })}
-                        </nav>
-                    </div>
+                    {/* Floating Island Navigation (Only in Main View) */}
+                    {view === 'main' && (
+                        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50">
+                            <nav className="glass-panel rounded-2xl px-2 py-2 flex items-center gap-1 shadow-glass border border-white/10 scale-100 origin-bottom hover:scale-105 transition-transform duration-300">
+                                {[
+                                    { id: 'raghendh', icon: 'ph-barbell', activeColor: 'bg-primary text-white shadow-neon-purple' },
+                                    { id: 'devanandh', icon: 'ph-sneaker-move', activeColor: 'bg-secondary text-white shadow-neon-green' },
+                                    { id: 'history', icon: 'ph-clock-counter-clockwise', activeColor: 'bg-textMain text-bg' },
+                                    { id: 'library', icon: 'ph-books', activeColor: 'bg-textMain text-bg' }
+                                ].map(item => {
+                                    const isActive = tab === item.id;
+                                    return (
+                                        <button 
+                                            key={item.id} 
+                                            onClick={() => setTab(item.id)} 
+                                            className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 ${isActive ? item.activeColor : 'text-textMuted hover:bg-white/5 hover:text-textMain'}`}
+                                        >
+                                            <i className={`${isActive ? 'ph-fill' : 'ph-bold'} ${item.icon} text-xl`}></i>
+                                        </button>
+                                    );
+                                })}
+                            </nav>
+                        </div>
+                    )}
                 </div>
             );
         };
