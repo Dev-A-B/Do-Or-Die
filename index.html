@@ -7,7 +7,7 @@
     
     <!-- PWA Settings -->
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#000000">
+    <meta name="theme-color" content="#09090b">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="icon-192.png">
@@ -15,7 +15,7 @@
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&family=Teko:wght@300..700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=Teko:wght@300..700&display=swap" rel="stylesheet">
     
     <!-- React & ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
@@ -64,20 +64,27 @@
             theme: {
                 extend: {
                     colors: {
-                        dodPurple: '#A855F7', // Raghendh
-                        dodGreen: '#22C55E',  // Devanandh
-                        dodBg: '#000000',
-                        dodCard: '#0B192C',
-                        dodInput: '#1E3E62',
-                        dodText: '#e5e7eb',
+                        // Modern Palette
+                        bg: '#09090b',     // Zinc 950
+                        surface: '#18181b', // Zinc 900
+                        surfaceLight: '#27272a', // Zinc 800
+                        primary: '#a855f7', // Purple
+                        secondary: '#22c55e', // Green
+                        textMain: '#f4f4f5', // Zinc 100
+                        textMuted: '#a1a1aa', // Zinc 400
+                        border: 'rgba(255, 255, 255, 0.08)',
                     },
                     fontFamily: {
-                        sans: ['Roboto', 'sans-serif'],
-                        mono: ['Roboto Mono', 'monospace'],
+                        sans: ['Inter', 'sans-serif'],
                         teko: ['Teko', 'sans-serif'],
                     },
                     boxShadow: {
-                        'glow': '0 0 20px rgba(255, 255, 255, 0.05)',
+                        'neon-purple': '0 0 20px rgba(168, 85, 247, 0.15)',
+                        'neon-green': '0 0 20px rgba(34, 197, 94, 0.15)',
+                        'glass': '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
+                    },
+                    backgroundImage: {
+                        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
                     }
                 }
             }
@@ -85,12 +92,31 @@
     </script>
 
     <style>
-        body { background-color: #000000; color: #E6E1E5; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+        body { background-color: #09090b; color: #f4f4f5; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
         input, select, button, textarea { outline: none; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        .fade-in { animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Glassmorphism Utilities */
+        .glass-panel {
+            background: rgba(24, 24, 27, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        
+        .glass-input {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.2s ease;
+        }
+        .glass-input:focus {
+            background: rgba(0, 0, 0, 0.5);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .fade-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
     </style>
 </head>
 <body>
@@ -107,21 +133,31 @@
             return `${year}-${month}-${day}`;
         };
 
+        const formatDatePretty = () => {
+            const date = new Date();
+            return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        };
+
         // --- COMPONENTS ---
 
         const SetupScreen = ({ error }) => (
-            <div className="min-h-screen bg-dodBg flex flex-col items-center justify-center p-6 text-center">
-                <i className="ph-fill ph-warning text-5xl text-dodPurple mb-4"></i>
-                <h1 className="text-3xl font-medium text-white mb-2">Connection Issue</h1>
-                <p className="text-gray-400 mb-6 text-sm">{error?.message || "Could not connect to Firebase."}</p>
+            <div className="min-h-screen bg-bg flex flex-col items-center justify-center p-6 text-center">
+                <div className="w-20 h-20 rounded-3xl bg-surface border border-border flex items-center justify-center mb-6 shadow-neon-purple animate-pulse">
+                    <i className="ph-fill ph-warning text-4xl text-primary"></i>
+                </div>
+                <h1 className="text-2xl font-bold text-textMain mb-2">Connection Issue</h1>
+                <p className="text-textMuted text-sm">{error?.message || "Could not connect to Firebase."}</p>
             </div>
         );
 
-        // 1. SMOOTH MORPHING STOPWATCH
-        const Stopwatch = ({ label, theme, progress }) => {
+        // 1. MODERN WIDGET STOPWATCH
+        const StopwatchWidget = ({ label, colorClass, shadowClass }) => {
             const [time, setTime] = useState(0);
             const [isRunning, setIsRunning] = useState(false);
             const timerRef = useRef(null);
+            
+            // Extract the color name (primary/secondary) for the background class
+            const bgClass = colorClass.replace('text-', 'bg-');
 
             const toggle = () => {
                 if (isRunning) {
@@ -132,7 +168,7 @@
                     const startTime = Date.now() - time;
                     timerRef.current = setInterval(() => {
                         setTime(Date.now() - startTime);
-                    }, 100);
+                    }, 50); // Faster update for smoothness
                     setIsRunning(true);
                 }
             };
@@ -140,53 +176,48 @@
             const format = (ms) => {
                 const mins = Math.floor(ms / 60000).toString().padStart(2, '0');
                 const secs = Math.floor((ms % 60000) / 1000).toString().padStart(2, '0');
-                return `${mins}:${secs}`;
+                return { mins, secs };
             };
             
+            const { mins, secs } = format(time);
             const decis = Math.floor((time % 1000) / 100);
-
-            // Interpolation Helpers
-            const p = Math.min(Math.max(progress, 0), 1); // Clamp 0-1
-            
-            // Dynamic Styles based on scroll progress
-            const cardBg = theme === 'purple' 
-                ? `linear-gradient(145deg, #A855F7 ${100 - p*50}%, #6b21a8)` 
-                : `linear-gradient(145deg, #22C55E ${100 - p*50}%, #14532d)`;
-            
-            // Tuned Sizes: TEKO is condensed, so we make sizes HUGE for impact
-            // Start: 5.5rem time, End: 3rem time
-            const fontSizeTime = 5.5 - (p * 2.5); 
-            const fontSizeDecis = 2.5 - (p * 1.5); // Hides decimal
-            const paddingY = 1 - (p * 0.5); 
-            
-            // Name label size: Start 2.5rem, End 1.5rem
-            const labelSize = 2.5 - (p * 1);
 
             return (
                 <div 
                     onClick={toggle} 
-                    className="flex-1 mx-1 rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-transform active:scale-95 shadow-xl overflow-hidden relative border border-white/20 group"
-                    style={{
-                        background: cardBg,
-                        paddingTop: `${Math.max(0.5, paddingY)}rem`,
-                        paddingBottom: `${Math.max(0.5, paddingY)}rem`,
-                        boxShadow: 'inset 0 0 20px rgba(0,0,0,0.2)'
-                    }}
+                    // Changed: Added conditional classes for active state (background color, border transparent)
+                    className={`relative flex-1 rounded-[2rem] p-5 cursor-pointer overflow-hidden transition-all duration-300 active:scale-95 border h-44 flex flex-col justify-between group
+                    ${isRunning ? `${bgClass} border-transparent shadow-lg scale-[1.02]` : `border-white/5 ${shadowClass}`}`}
+                    style={{ background: isRunning ? undefined : 'linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0) 100%)' }}
                 >
-                    <span className="font-teko font-bold tracking-wide uppercase mb-0 text-white/90 leading-none drop-shadow-md" style={{ fontSize: `${labelSize}rem` }}>
-                        {label}
-                    </span>
+                    {/* Background Glow - Only show when NOT running to avoid visual noise on solid bg */}
+                    {!isRunning && <div className={`absolute -right-6 -top-6 w-28 h-28 rounded-full blur-3xl opacity-20 ${bgClass}`}></div>}
                     
-                    <div className="font-teko font-medium tracking-tight tabular-nums flex items-baseline text-white leading-none mt-0 drop-shadow-lg" style={{ fontSize: `${fontSizeTime}rem` }}>
-                        {format(time)}
-                        <span className="font-light text-white/60" style={{ fontSize: `${Math.max(0, fontSizeDecis)}rem`, width: p > 0.5 ? 0 : 'auto' }}>.{decis}</span>
+                    <div className="relative z-10 mt-1">
+                        {/* Changed: Text color becomes white/black based on state */}
+                        <span className={`font-teko text-5xl font-bold tracking-wide uppercase leading-none block transition-colors ${isRunning ? 'text-bg mix-blend-screen' : `${colorClass} opacity-90`}`}>
+                            {label}
+                        </span>
                     </div>
+
+                    <div className="flex items-baseline gap-0.5 relative z-10 mb-1">
+                        {/* Changed: Reduced size to 4.5rem to fit better. Color changes to white when running. */}
+                        <span className={`font-teko text-[4.5rem] font-semibold leading-[0.75] tracking-tight transition-colors ${isRunning ? 'text-white' : 'text-textMain'}`}>
+                            {mins}:{secs}
+                        </span>
+                        <span className={`font-teko text-4xl font-light w-8 transition-colors ${isRunning ? 'text-white/60' : 'text-textMuted'}`}>
+                            {decis}
+                        </span>
+                    </div>
+                    
+                    {/* Status Indicator */}
+                    <div className={`absolute bottom-5 right-5 w-2 h-2 rounded-full transition-colors duration-300 ${isRunning ? 'bg-white animate-pulse' : 'bg-white/10'}`}></div>
                 </div>
             );
         };
 
-        // 2. EXERCISE ROW
-        const ExerciseRow = ({ exercise, exIndex, updateExercise, deleteExercise, suggestionList, isExpanded, onToggleExpand, userKey, allHistory, themeBg, themeBorder }) => {
+        // 2. EXERCISE CARD (No Changes)
+        const ExerciseCard = ({ exercise, exIndex, updateExercise, deleteExercise, suggestionList, isExpanded, onToggleExpand, userKey, allHistory, colorTheme }) => {
             const [showRemark, setShowRemark] = useState(!!exercise.remark);
             const [showSuggestions, setShowSuggestions] = useState(false);
             const [showNotesHistory, setShowNotesHistory] = useState(false);
@@ -220,69 +251,79 @@
             const removeSet = (sIndex) => updateExercise(exIndex, { ...exercise, sets: exercise.sets.filter((_, i) => i !== sIndex) });
             const handleNameSelect = (name) => { updateExercise(exIndex, { ...exercise, name: name }); setShowSuggestions(false); };
 
-            // COLLAPSED
+            // COMPACT VIEW
             if (!isExpanded) {
                 return (
-                    <div onClick={onToggleExpand} className={`mb-3 rounded-xl p-4 border cursor-pointer flex justify-between items-center shadow-lg transition-colors ${themeBg} ${themeBorder} bg-opacity-20 hover:bg-opacity-30`}>
-                        <div>
-                            <h3 className="text-white font-bold text-lg">{exercise.name || "New Exercise"}</h3>
-                            <p className="text-xs text-gray-300 mt-0.5 font-mono">{exercise.sets?.length || 0} Sets</p>
+                    <div onClick={onToggleExpand} className="glass-panel rounded-2xl p-4 mb-3 flex justify-between items-center cursor-pointer hover:bg-white/5 transition-colors group">
+                        <div className="flex items-center gap-4">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center bg-surface border border-border ${colorTheme.text}`}>
+                                <span className="font-teko text-xl font-bold">{exIndex + 1}</span>
+                            </div>
+                            <div>
+                                <h3 className="text-textMain font-semibold text-lg leading-tight">{exercise.name || "New Exercise"}</h3>
+                                <div className="flex items-center gap-2 mt-1">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-textMuted bg-surfaceLight px-1.5 py-0.5 rounded">{exercise.sets?.length || 0} Sets</span>
+                                    {exercise.remark && <i className="ph-fill ph-note text-textMuted text-xs"></i>}
+                                </div>
+                            </div>
                         </div>
-                        <i className="ph-bold ph-caret-down text-white/50 text-xl"></i>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center bg-transparent group-hover:bg-white/10 transition-colors`}>
+                            <i className="ph-bold ph-caret-down text-textMuted"></i>
+                        </div>
                     </div>
                 );
             }
 
-            // EXPANDED
+            // EXPANDED EDIT VIEW
             return (
-                <div className={`mb-4 rounded-2xl border overflow-visible shadow-xl fade-in ${themeBg} ${themeBorder} bg-opacity-20`}>
-                    <div className="flex justify-between items-center p-4 border-b border-white/10 bg-black/20 rounded-t-2xl cursor-pointer" onClick={onToggleExpand}>
-                        <div className="flex-1 mr-4 relative">
-                            <div className="relative" onClick={(e) => e.stopPropagation()}>
-                                <input 
-                                    value={exercise.name}
-                                    onChange={(e) => { updateExercise(exIndex, {...exercise, name: e.target.value}); setShowSuggestions(true); }}
-                                    onFocus={() => setShowSuggestions(true)}
-                                    onBlur={() => setTimeout(() => setShowSuggestions(false), 200)} 
-                                    className="w-full bg-transparent text-xl font-bold text-white placeholder-white/30 border-none p-0 focus:ring-0"
-                                    placeholder="Exercise Name"
-                                    autoComplete="off"
-                                />
-                                {showSuggestions && filteredSuggestions.length > 0 && (
-                                    <ul className="absolute left-0 top-full w-full bg-dodCard border border-dodInput rounded-lg mt-2 shadow-2xl z-50 max-h-48 overflow-y-auto">
-                                        {filteredSuggestions.map((suggestion, i) => (
-                                            <li key={i} onMouseDown={(e) => { e.preventDefault(); handleNameSelect(suggestion); }} className="px-4 py-3 text-sm text-white hover:bg-white/10 cursor-pointer border-b border-white/5 last:border-0">
-                                                {suggestion}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                )}
-                            </div>
+                <div className="glass-panel rounded-3xl mb-4 overflow-visible fade-in ring-1 ring-white/10">
+                    <div className="p-5 border-b border-border flex justify-between items-start gap-4">
+                        <div className="flex-1 relative">
+                            <input 
+                                value={exercise.name}
+                                onChange={(e) => { updateExercise(exIndex, {...exercise, name: e.target.value}); setShowSuggestions(true); }}
+                                onFocus={() => setShowSuggestions(true)}
+                                onBlur={() => setTimeout(() => setShowSuggestions(false), 200)} 
+                                className="w-full bg-transparent text-2xl font-bold text-textMain placeholder-textMuted/30 border-none p-0 focus:ring-0 leading-none"
+                                placeholder="Name..."
+                                autoComplete="off"
+                            />
+                            {showSuggestions && filteredSuggestions.length > 0 && (
+                                <ul className="absolute left-0 top-full w-full bg-surfaceLight border border-border rounded-xl mt-2 shadow-2xl z-50 max-h-48 overflow-y-auto overflow-x-hidden">
+                                    {filteredSuggestions.map((suggestion, i) => (
+                                        <li key={i} onMouseDown={(e) => { e.preventDefault(); handleNameSelect(suggestion); }} className="px-4 py-3 text-sm text-textMain hover:bg-white/10 cursor-pointer border-b border-white/5 last:border-0">
+                                            {suggestion}
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
                         </div>
-                        <div className="flex gap-2" onClick={e => e.stopPropagation()}>
-                            <button onClick={() => setShowNotesHistory(!showNotesHistory)} className={`p-2 rounded-full ${showNotesHistory ? 'bg-white text-black' : 'text-white/60 hover:bg-white/10'}`}>
-                                <i className="ph-bold ph-clock-counter-clockwise text-lg"></i>
+                        <div className="flex gap-1">
+                            <button onClick={() => deleteExercise(exIndex)} className="w-8 h-8 flex items-center justify-center rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20">
+                                <i className="ph-bold ph-trash"></i>
                             </button>
-                            <button onClick={() => setShowRemark(!showRemark)} className={`p-2 rounded-full ${exercise.remark ? 'bg-white text-black' : 'text-white/60 hover:bg-white/10'}`}>
-                                <i className="ph-bold ph-notebook text-lg"></i>
-                            </button>
-                            <button onClick={() => deleteExercise(exIndex)} className="p-2 text-red-400 hover:bg-red-400/20 rounded-full">
-                                <i className="ph-bold ph-trash text-lg"></i>
-                            </button>
-                            <button onClick={onToggleExpand} className="p-2 text-white/60 rounded-full hover:bg-white/10">
-                                <i className="ph-bold ph-caret-up text-lg"></i>
+                            <button onClick={onToggleExpand} className="w-8 h-8 flex items-center justify-center rounded-lg bg-surface text-textMuted hover:bg-white/10">
+                                <i className="ph-bold ph-caret-up"></i>
                             </button>
                         </div>
                     </div>
-                    
+
+                    <div className="flex items-center gap-2 px-5 py-3 border-b border-border bg-black/20">
+                        <button onClick={() => setShowNotesHistory(!showNotesHistory)} className={`text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors ${showNotesHistory ? 'bg-primary text-white shadow-neon-purple' : 'bg-surface text-textMuted hover:text-textMain'}`}>
+                            <i className="ph-bold ph-clock-counter-clockwise"></i> History
+                        </button>
+                        <button onClick={() => setShowRemark(!showRemark)} className={`text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors ${showRemark || exercise.remark ? 'bg-surfaceLight text-textMain border border-white/10' : 'bg-surface text-textMuted hover:text-textMain'}`}>
+                            <i className="ph-bold ph-notebook"></i> Note
+                        </button>
+                    </div>
+
                     {showNotesHistory && (
-                        <div className="bg-black/30 p-4 max-h-40 overflow-y-auto border-b border-white/10">
-                            <h4 className="text-xs text-white/50 font-bold mb-2 uppercase tracking-wide">History</h4>
-                            {pastNotes.length === 0 ? <p className="text-sm text-white/30 italic">No notes.</p> : 
+                        <div className="bg-black/40 p-4 max-h-40 overflow-y-auto border-b border-border">
+                            {pastNotes.length === 0 ? <p className="text-sm text-textMuted italic">No history found.</p> : 
                                 pastNotes.map((n, i) => (
-                                    <div key={i} className="mb-2 text-sm text-gray-300 border-l-2 border-white/30 pl-2">
-                                        <span className="text-white font-bold text-xs block opacity-70">{n.date}</span>
-                                        {n.remark}
+                                    <div key={i} className="mb-3 last:mb-0 text-sm">
+                                        <div className="text-xs font-bold text-textMuted mb-0.5">{n.date}</div>
+                                        <div className="text-textMain pl-2 border-l-2 border-primary/50">{n.remark}</div>
                                     </div>
                                 ))
                             }
@@ -290,47 +331,63 @@
                     )}
 
                     {showRemark && (
-                        <div className="px-4 py-3 bg-black/20 border-b border-white/10">
+                        <div className="p-4 bg-black/20 border-b border-border">
                             <textarea
                                 value={exercise.remark || ""}
                                 onChange={(e) => updateExercise(exIndex, {...exercise, remark: e.target.value})}
-                                placeholder="Add note..."
-                                className="w-full bg-transparent text-sm text-white placeholder-white/30 resize-none h-auto focus:ring-0 border-none p-0"
-                                rows="1"
+                                placeholder="Add technical cues or notes..."
+                                className="w-full bg-surfaceLight/50 text-sm text-textMain placeholder-textMuted/50 rounded-xl p-3 border-none focus:ring-1 focus:ring-primary/50 resize-none min-h-[60px]"
                             />
                         </div>
                     )}
-                    
-                    <div className="p-4 space-y-3">
-                        <div className="flex px-1 text-[10px] font-bold text-white/40 tracking-wider">
-                            <div className="w-8 text-center">#</div>
-                            <div className="flex-1 pl-2">KG</div>
-                            <div className="flex-1 pl-2">REPS</div>
-                            <div className="w-12 text-center">UNI</div>
-                            <div className="w-8"></div>
+
+                    <div className="p-4">
+                        <div className="grid grid-cols-[30px_1fr_1fr_40px_30px] gap-2 mb-2 text-[10px] font-bold text-textMuted uppercase tracking-wider text-center items-center">
+                            <span>#</span>
+                            <span>KG</span>
+                            <span>Reps</span>
+                            <span>Uni</span>
+                            <span></span>
                         </div>
                         
-                        {(exercise.sets || []).map((set, sIndex) => (
-                            <div key={sIndex} className="flex gap-3 items-center">
-                                <span className="text-white/40 text-sm w-8 text-center font-mono">{sIndex + 1}</span>
-                                <div className="flex-1 relative bg-black/20 rounded-lg border border-white/10 focus-within:border-white/50 transition-colors">
-                                    <input type="number" value={set.weight} onChange={(e) => updateSet(sIndex, 'weight', e.target.value)} className="w-full bg-transparent p-2 text-white font-mono text-base border-none focus:ring-0 placeholder-white/10 text-center" placeholder="0" />
-                                </div>
-                                <div className="flex-1 relative bg-black/20 rounded-lg border border-white/10 focus-within:border-white/50 transition-colors">
-                                    <input type="number" value={set.reps} onChange={(e) => updateSet(sIndex, 'reps', e.target.value)} className="w-full bg-transparent p-2 text-white font-mono text-base border-none focus:ring-0 placeholder-white/10 text-center" placeholder="0" />
-                                </div>
-                                <div className="w-12 flex justify-center">
-                                    <button onClick={() => updateSet(sIndex, 'uni', !set.uni)} className={`w-8 h-8 rounded-lg flex items-center justify-center border transition-all ${set.uni ? 'bg-white text-black border-white' : 'bg-transparent border-white/20 text-white/30'}`}>
-                                        <span className="text-[10px] font-bold">1</span>
+                        <div className="space-y-2">
+                            {(exercise.sets || []).map((set, sIndex) => (
+                                <div key={sIndex} className="grid grid-cols-[30px_1fr_1fr_40px_30px] gap-2 items-center">
+                                    <div className="flex items-center justify-center h-10 rounded-lg bg-surface text-textMuted font-mono text-sm">
+                                        {sIndex + 1}
+                                    </div>
+                                    <div className="h-10 relative">
+                                        <input 
+                                            type="number" 
+                                            value={set.weight} 
+                                            onChange={(e) => updateSet(sIndex, 'weight', e.target.value)} 
+                                            className="w-full h-full rounded-lg glass-input text-center text-textMain font-teko text-xl focus:ring-0"
+                                            placeholder="-"
+                                        />
+                                    </div>
+                                    <div className="h-10 relative">
+                                        <input 
+                                            type="number" 
+                                            value={set.reps} 
+                                            onChange={(e) => updateSet(sIndex, 'reps', e.target.value)} 
+                                            className="w-full h-full rounded-lg glass-input text-center text-textMain font-teko text-xl focus:ring-0"
+                                            placeholder="-"
+                                        />
+                                    </div>
+                                    <button 
+                                        onClick={() => updateSet(sIndex, 'uni', !set.uni)} 
+                                        className={`h-10 rounded-lg flex items-center justify-center border transition-all ${set.uni ? 'bg-primary border-primary text-white shadow-neon-purple' : 'bg-surface border-border text-textMuted'}`}
+                                    >
+                                        <span className="text-xs font-bold">U</span>
+                                    </button>
+                                    <button onClick={() => removeSet(sIndex)} className="h-10 flex items-center justify-center text-textMuted hover:text-red-400 transition-colors">
+                                        <i className="ph-bold ph-x"></i>
                                     </button>
                                 </div>
-                                <button onClick={() => removeSet(sIndex)} className="text-white/30 hover:text-red-400 w-8 flex justify-center">
-                                    <i className="ph-bold ph-x text-lg"></i>
-                                </button>
-                            </div>
-                        ))}
-                        
-                        <button onClick={addSet} className="w-full py-3 mt-2 text-sm font-bold text-white bg-white/10 rounded-xl hover:bg-white/20 transition-colors flex items-center justify-center gap-2 ripple">
+                            ))}
+                        </div>
+
+                        <button onClick={addSet} className="mt-4 w-full py-3.5 rounded-xl border border-dashed border-white/20 text-textMuted hover:text-textMain hover:bg-white/5 hover:border-white/40 transition-all flex items-center justify-center gap-2 text-sm font-medium">
                             <i className="ph-bold ph-plus"></i> Add Set
                         </button>
                     </div>
@@ -338,8 +395,8 @@
             );
         };
 
-        // 3. WORKOUT LOGGER
-        const WorkoutLogger = ({ userKey, allHistory, themeBg, themeBorder, themeText }) => {
+        // 3. MAIN DASHBOARD WIDGET (No Changes)
+        const Dashboard = ({ userKey, allHistory, colorTheme }) => {
             const [split, setSplit] = useState("");
             const [bodyWeight, setBodyWeight] = useState("");
             const [exercises, setExercises] = useState([]);
@@ -390,60 +447,85 @@
             const splits = ["Push", "Pull", "Legs", "Upper", "Lower", "Full Body", "Cardio", "Arms", "Abs", "Rest"];
 
             return (
-                <div className="pt-2 fade-in">
-                    {/* Today's Focus Card - Colorful */}
-                    <div className={`p-5 rounded-2xl border mb-6 ${themeBg} ${themeBorder} bg-opacity-20`}>
-                        <div className="mb-5">
-                            <label className="text-xs font-bold text-white/80 tracking-wider uppercase mb-3 block">Today's focus</label>
-                            <div className="flex flex-wrap gap-2">
+                <div className="fade-in pb-24">
+                    {/* Header Widget */}
+                    <div className="glass-panel rounded-3xl p-5 mb-6 relative overflow-hidden">
+                        <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${colorTheme.gradient} opacity-20 blur-3xl rounded-full translate-x-10 -translate-y-10`}></div>
+                        
+                        <div className="flex justify-between items-start mb-4 relative z-10">
+                            <div>
+                                <h2 className="text-textMuted text-xs font-bold uppercase tracking-wider mb-1">Current Session</h2>
+                                <h1 className={`text-3xl font-black italic tracking-tighter ${colorTheme.text}`}>{userKey.toUpperCase()}</h1>
+                            </div>
+                            <div className="bg-surface border border-border rounded-xl px-3 py-2">
+                                <span className="text-xs font-bold text-textMain block">Bodyweight</span>
+                                <div className="flex items-baseline gap-1">
+                                    <input 
+                                        type="number" 
+                                        value={bodyWeight} 
+                                        onChange={(e) => { setBodyWeight(e.target.value); updatePersonalData({bodyWeight: e.target.value}); }} 
+                                        placeholder="--" 
+                                        className="w-12 bg-transparent text-lg font-teko font-bold text-textMain border-none p-0 focus:ring-0 text-right" 
+                                    />
+                                    <span className="text-[10px] text-textMuted">kg</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="relative z-10">
+                            <label className="text-[10px] font-bold text-textMuted uppercase tracking-wider mb-2 block">Focus</label>
+                            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 -mx-1 px-1">
                                 {splits.map(s => (
-                                    <button key={s} onClick={() => updateSharedSplit(s)} className={`px-4 py-1.5 rounded-lg text-xs font-bold border transition-all ${split === s ? `bg-white text-black border-white` : 'border-white/10 text-white/50 hover:bg-white/5'}`}>
+                                    <button 
+                                        key={s} 
+                                        onClick={() => updateSharedSplit(s)} 
+                                        className={`whitespace-nowrap px-4 py-2 rounded-xl text-xs font-bold transition-all border ${split === s ? `bg-textMain text-bg border-textMain shadow-lg shadow-white/10` : 'bg-surface border-border text-textMuted hover:bg-surfaceLight'}`}
+                                    >
                                         {s}
                                     </button>
                                 ))}
                             </div>
                         </div>
-                        <div>
-                            <label className="text-xs font-bold text-white/80 tracking-wider uppercase mb-2 block">Body Weight</label>
-                            <div className="bg-black/20 rounded-lg border border-white/10 focus-within:border-white relative">
-                                <input type="number" value={bodyWeight} onChange={(e) => { setBodyWeight(e.target.value); updatePersonalData({bodyWeight: e.target.value}); }} placeholder="0.0" className="w-full bg-transparent p-3 text-white font-mono text-lg border-none focus:ring-0" />
-                                <span className="absolute right-3 top-3.5 text-sm text-gray-500">kg</span>
-                            </div>
-                        </div>
                     </div>
 
-                    <div>
+                    {/* Exercise Stack */}
+                    <div className="space-y-1">
                         {exercises.map((ex, i) => (
-                            <ExerciseRow 
+                            <ExerciseCard 
                                 key={i} exercise={ex} exIndex={i} 
                                 updateExercise={handleUpdateExercise} deleteExercise={handleDeleteExercise} 
                                 suggestionList={suggestionList} isExpanded={i === expandedIndex} 
                                 onToggleExpand={() => setExpandedIndex(i === expandedIndex ? -1 : i)} 
                                 userKey={userKey} allHistory={allHistory} 
-                                themeBg={themeBg} themeBorder={themeBorder}
+                                colorTheme={colorTheme}
                             />
                         ))}
                     </div>
 
-                    <button onClick={handleAddExercise} className={`fixed bottom-20 right-4 h-14 pl-4 pr-6 rounded-2xl bg-white text-black shadow-2xl flex items-center gap-2 font-bold transition-transform active:scale-95 z-40`}>
+                    <button 
+                        onClick={handleAddExercise} 
+                        className={`fixed bottom-24 right-5 w-14 h-14 rounded-2xl ${colorTheme.bg} flex items-center justify-center text-white shadow-lg shadow-${colorTheme.shadow} hover:scale-105 active:scale-95 transition-all z-40 border border-white/20`}
+                    >
                         <i className="ph-bold ph-plus text-2xl"></i>
-                        <span>New Exercise</span>
                     </button>
 
-                    {status && <div className="fixed bottom-20 left-4 bg-dodInput text-white px-4 py-2 rounded-lg text-xs font-bold shadow-lg flex items-center gap-2 fade-in backdrop-blur-md border border-white/10"><i className={`ph-fill ph-check-circle ${themeText}`}></i> {status}</div>}
+                    {status && (
+                        <div className="fixed bottom-24 left-5 bg-surface/80 backdrop-blur-md border border-border text-textMain px-4 py-2 rounded-xl text-xs font-bold shadow-2xl flex items-center gap-2 fade-in z-50">
+                            <div className={`w-2 h-2 rounded-full ${colorTheme.bg}`}></div> {status}
+                        </div>
+                    )}
                 </div>
             );
         };
 
-        // 4. HISTORY PAGE
-        const HistoryPage = ({ historyData }) => {
+        // 4. TIMELINE WIDGET (HISTORY)
+        const Timeline = ({ historyData }) => {
             const [searchTerm, setSearchTerm] = useState("");
+            const [expandedDate, setExpandedDate] = useState(null); // Updated: Track expanded date
             const [viewRemarks, setViewRemarks] = useState({});
-            const [expandedDay, setExpandedDay] = useState(null); 
-
-            const toggleRemark = (id) => setViewRemarks(prev => ({...prev, [id]: !prev[id]}));
             
-            // Fixed: Deduplicate names by trimming and ignoring case to organize the list
+            const toggleRemark = (id) => setViewRemarks(prev => ({...prev, [id]: !prev[id]}));
+
             const allExerciseNames = useMemo(() => {
                 const uniqueNames = new Map();
                 if (historyData) {
@@ -453,12 +535,9 @@
                                 if(e.name) {
                                     const clean = e.name.trim();
                                     const lower = clean.toLowerCase();
-                                    
-                                    // Store the version that looks best (Capitalized over lowercase)
                                     if (!uniqueNames.has(lower)) {
                                         uniqueNames.set(lower, clean);
                                     } else {
-                                        // If existing is lower and new is Capitalized, update it to look nicer
                                         const existing = uniqueNames.get(lower);
                                         if (existing[0] === existing[0].toLowerCase() && clean[0] === clean[0].toUpperCase()) {
                                             uniqueNames.set(lower, clean);
@@ -476,7 +555,6 @@
             
             const searchResults = useMemo(() => {
                 if (!searchTerm) return null;
-                // Trim search term to ensure trailing spaces don't break matches
                 const term = searchTerm.trim().toLowerCase();
                 if (!term) return null;
 
@@ -486,14 +564,8 @@
                     ['raghendh', 'devanandh'].forEach(u => {
                         if (dayData[u]?.exercises) {
                             dayData[u].exercises.forEach(ex => { 
-                                // Robust matching: trim both source and term
                                 if (ex.name && ex.name.trim().toLowerCase().includes(term)) {
-                                    res[u].push({ 
-                                        date, 
-                                        split: dayData.split || dayData[u].split, 
-                                        bw: dayData[u].bodyWeight, 
-                                        exercise: ex 
-                                    }); 
+                                    res[u].push({ date, split: dayData.split || dayData[u].split, bw: dayData[u].bodyWeight, exercise: ex }); 
                                 }
                             });
                         }
@@ -503,128 +575,144 @@
             }, [searchTerm, historyData, dates]);
 
             return (
-                <div className="pb-28 space-y-4 pt-2 fade-in">
-                    <div className="bg-dodInput rounded-full h-12 flex items-center px-4 mb-4 mx-1">
-                        <i className="ph-bold ph-magnifying-glass text-gray-400 text-xl"></i>
-                        <input list="history-search" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search exercises..." className="bg-transparent border-none w-full ml-3 text-white placeholder-gray-500 focus:ring-0 h-full" />
-                        {searchTerm && <button onClick={() => setSearchTerm("")}><i className="ph-bold ph-x-circle text-gray-400 text-xl"></i></button>}
+                <div className="pb-24 pt-2 fade-in">
+                    {/* Changed: Removed sticky and top positioning */}
+                    <div className="glass-panel rounded-2xl p-2 mb-4 flex items-center gap-3 shadow-glass">
+                        <div className="w-10 h-10 rounded-xl bg-surface flex items-center justify-center text-textMuted">
+                            <i className="ph-bold ph-magnifying-glass text-xl"></i>
+                        </div>
+                        <input 
+                            list="history-search" 
+                            value={searchTerm} 
+                            onChange={(e) => setSearchTerm(e.target.value)} 
+                            placeholder="Search history..." 
+                            className="bg-transparent border-none flex-1 text-textMain placeholder-textMuted focus:ring-0 text-sm font-medium" 
+                        />
+                        {searchTerm && (
+                            <button onClick={() => setSearchTerm("")} className="w-10 h-10 flex items-center justify-center text-textMuted hover:text-white">
+                                <i className="ph-fill ph-x-circle text-xl"></i>
+                            </button>
+                        )}
                         <datalist id="history-search">{allExerciseNames.map((name, i) => <option key={i} value={name} />)}</datalist>
                     </div>
 
-                    {searchTerm && searchResults && (
-                        <div className="grid grid-cols-2 gap-3 px-1">
+                    {searchTerm && searchResults ? (
+                        <div className="space-y-4">
                             {['raghendh', 'devanandh'].map(u => (
                                 <div key={u}>
-                                    <div className={`text-xs font-bold uppercase mb-3 tracking-widest text-center pb-1 border-b-2 ${u === 'raghendh' ? 'text-dodPurple border-dodPurple' : 'text-dodGreen border-dodGreen'}`}>{u}</div>
+                                    <h3 className={`text-xs font-black uppercase tracking-widest mb-3 pl-2 ${u === 'raghendh' ? 'text-primary' : 'text-secondary'}`}>{u}</h3>
                                     <div className="space-y-3">
-                                        {searchResults[u].length === 0 && <div className="text-gray-500 text-xs text-center italic">No records</div>}
-                                        {searchResults[u].map((item, i) => {
-                                            const id = `${u}-${i}`;
-                                            return (
-                                                <div key={i} className={`p-3 rounded-xl border border-white/10 ${u === 'raghendh' ? 'bg-dodPurple/20' : 'bg-dodGreen/20'}`}>
-                                                    <div className="flex justify-between items-baseline mb-2">
-                                                        <span className="text-xs font-bold text-white/50">{item.date}</span>
-                                                        {item.bw && <span className="text-[10px] bg-white/10 px-1.5 rounded text-white/70">BW: {item.bw}</span>}
-                                                    </div>
-                                                    <div className="space-y-1">
-                                                        {item.exercise.sets?.map((set, si) => (
-                                                            <div key={si} className="text-base font-bold text-white font-mono flex justify-between">
-                                                                <span>{set.weight}kg x {set.reps}</span>
-                                                                {set.uni && <span className="text-[9px] text-white bg-white/20 px-1 rounded">UNI</span>}
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                    {item.exercise.remark && (
-                                                        <div className="mt-2 pt-2 border-t border-white/10">
-                                                            <button onClick={() => toggleRemark(id)} className="text-xs flex items-center gap-1 text-white hover:text-gray-300">
-                                                                <i className="ph-fill ph-chat-text"></i> {viewRemarks[id] ? "Hide Note" : "Note"}
-                                                            </button>
-                                                            {viewRemarks[id] && <div className="mt-1 text-xs text-gray-300 italic bg-white/10 p-1 rounded">{item.exercise.remark}</div>}
-                                                        </div>
-                                                    )}
+                                        {searchResults[u].map((item, i) => (
+                                            <div key={i} className="glass-panel rounded-2xl p-4 border-l-4 border-l-surfaceLight relative overflow-hidden">
+                                                <div className={`absolute left-0 top-0 bottom-0 w-1 ${u === 'raghendh' ? 'bg-primary' : 'bg-secondary'}`}></div>
+                                                <div className="flex justify-between items-center mb-2">
+                                                    <span className="text-xs font-bold text-textMuted bg-surface px-2 py-1 rounded-lg">{item.date}</span>
+                                                    {item.bw && <span className="text-[10px] text-textMuted">BW: {item.bw}kg</span>}
                                                 </div>
-                                            );
-                                        })}
+                                                <h4 className="font-bold text-textMain mb-2">{item.exercise.name}</h4>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {item.exercise.sets?.map((s, si) => (
+                                                        <div key={si} className="bg-surface border border-border px-2 py-1 rounded text-xs font-mono text-textMain">
+                                                            {s.weight}kg x {s.reps}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
                             ))}
                         </div>
-                    )}
+                    ) : (
+                        <div className="space-y-3 relative">
+                            <div className="absolute left-[19px] top-4 bottom-0 w-0.5 bg-border z-0"></div>
+                            {dates.map(dateStr => {
+                                const dayData = historyData[dateStr];
+                                if (!dayData) return null;
+                                const splitName = dayData.split || dayData.raghendh?.split || dayData.devanandh?.split || '-';
+                                const isExpanded = expandedDate === dateStr;
 
-                    {!searchTerm && dates.map(dateStr => {
-                        const dayData = historyData[dateStr];
-                        if (!dayData) return null;
-                        const isExpanded = expandedDay === dateStr;
-                        const splitName = dayData.split || dayData.raghendh?.split || dayData.devanandh?.split || '-';
-
-                        return (
-                            <div key={dateStr} className={`bg-dodCard mx-1 rounded-xl overflow-hidden mb-2 border border-dodInput transition-all ${isExpanded ? 'ring-1 ring-gray-600' : ''}`}>
-                                <div className="p-4 flex justify-between items-center cursor-pointer hover:bg-white/5" onClick={() => setExpandedDay(isExpanded ? null : dateStr)}>
-                                    <div>
-                                        <h3 className="text-base font-bold text-white">{dateStr}</h3>
-                                        <p className="text-xs text-dodPurple font-medium uppercase tracking-wider mt-0.5">{splitName}</p>
-                                    </div>
-                                    <i className={`ph-bold ph-caret-${isExpanded ? 'up' : 'down'} text-gray-400`}></i>
-                                </div>
-
-                                {isExpanded && (
-                                    <div className="grid grid-cols-2 divide-x divide-dodInput border-t border-dodInput bg-black/20 fade-in">
-                                        {['raghendh', 'devanandh'].map(u => {
-                                            const uData = dayData[u];
-                                            const color = u === 'raghendh' ? 'text-dodPurple' : 'text-dodGreen';
-                                            return (
-                                                <div key={u} className="p-3">
-                                                    <div className={`text-xs font-black uppercase mb-3 tracking-widest ${color}`}>{u}</div>
-                                                    {uData?.bodyWeight && <div className="text-xs mb-3 text-white bg-white/10 inline-block px-2 py-0.5 rounded-sm">BW: {uData.bodyWeight}kg</div>}
-                                                    
-                                                    <div className="space-y-4">
-                                                        {(uData?.exercises || []).map((ex, i) => {
-                                                            const id = `${dateStr}-${u}-${i}`;
+                                return (
+                                    <div key={dateStr} className="relative z-10 pl-10">
+                                        <div className="absolute left-0 top-1 w-10 h-10 rounded-full bg-surface border-4 border-bg flex items-center justify-center text-textMuted text-[10px] font-bold shadow-sm">
+                                            {dateStr.split('-')[2]}
+                                        </div>
+                                        
+                                        {/* Updated: Accordion Style */}
+                                        <div className="glass-panel rounded-2xl mb-4 overflow-hidden">
+                                            <div 
+                                                className="p-4 flex justify-between items-center cursor-pointer hover:bg-white/5 transition-colors"
+                                                onClick={() => setExpandedDate(isExpanded ? null : dateStr)}
+                                            >
+                                                <div>
+                                                    <div className="text-xs font-bold text-textMuted uppercase tracking-wider mb-1">{new Date(dateStr).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</div>
+                                                    <div className="text-lg font-bold text-textMain leading-none">{splitName}</div>
+                                                </div>
+                                                <div className={`w-8 h-8 rounded-full bg-surface flex items-center justify-center transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
+                                                    <i className="ph-bold ph-caret-down text-textMuted"></i>
+                                                </div>
+                                            </div>
+                                            
+                                            {isExpanded && (
+                                                <div className="border-t border-border bg-black/20 p-4">
+                                                    <div className="grid grid-cols-2 gap-4 divide-x divide-border">
+                                                        {['raghendh', 'devanandh'].map(u => {
+                                                            const uData = dayData[u];
+                                                            const color = u === 'raghendh' ? 'text-primary' : 'text-secondary';
                                                             return (
-                                                                <div key={i}>
-                                                                    <div className="text-sm font-bold text-white uppercase mb-1 truncate">{ex.name}</div>
-                                                                    <div className="space-y-0.5">
-                                                                        {(ex.sets || []).map((s, si) => (
-                                                                            <div key={si} className="text-base font-mono font-medium text-gray-300 flex justify-between items-center pr-1">
-                                                                                <span>{s.weight}kg x {s.reps}</span>
-                                                                                {s.uni && <span className="text-[8px] text-white border border-white px-0.5 rounded">U</span>}
-                                                                            </div>
-                                                                        ))}
+                                                                <div key={u} className={u === 'devanandh' ? 'pl-4' : ''}>
+                                                                    <div className={`text-[10px] font-black uppercase mb-3 ${color}`}>{u}</div>
+                                                                    {uData?.bodyWeight && <div className="text-[10px] mb-3 text-textMuted bg-surface inline-block px-2 py-0.5 rounded">BW: {uData.bodyWeight}kg</div>}
+                                                                    
+                                                                    <div className="space-y-4">
+                                                                        {(uData?.exercises || []).map((ex, i) => {
+                                                                             const id = `${dateStr}-${u}-${i}`;
+                                                                             return (
+                                                                                <div key={i}>
+                                                                                    <div className="text-xs font-bold text-textMain uppercase mb-1 truncate">{ex.name}</div>
+                                                                                    <div className="space-y-1">
+                                                                                        {(ex.sets || []).map((s, si) => (
+                                                                                            <div key={si} className="text-xs font-mono text-textMuted flex justify-between">
+                                                                                                <span>{s.weight}kg x {s.reps}</span>
+                                                                                            </div>
+                                                                                        ))}
+                                                                                    </div>
+                                                                                    {ex.remark && (
+                                                                                        <button onClick={(e) => { e.stopPropagation(); toggleRemark(id); }} className="mt-1 text-[10px] text-textMuted hover:text-white flex items-center gap-1">
+                                                                                            <i className="ph-fill ph-note"></i> Note
+                                                                                        </button>
+                                                                                    )}
+                                                                                    {viewRemarks[id] && <div className="text-[10px] text-textMuted italic mt-1 pl-2 border-l-2 border-white/10">{ex.remark}</div>}
+                                                                                </div>
+                                                                            );
+                                                                        })}
+                                                                        {!uData?.exercises && <span className="text-[10px] text-white/20 italic">Rest Day</span>}
                                                                     </div>
-                                                                    {ex.remark && (
-                                                                        <button onClick={() => toggleRemark(id)} className="mt-1 text-xs text-white/70 hover:text-white flex items-center gap-1">
-                                                                            <i className="ph-fill ph-note"></i> Note
-                                                                        </button>
-                                                                    )}
-                                                                    {viewRemarks[id] && <div className="text-xs text-gray-400 italic mt-1 pl-2 border-l-2 border-white/20">{ex.remark}</div>}
                                                                 </div>
                                                             );
                                                         })}
-                                                        {!uData?.exercises && <div className="text-xs text-gray-600 italic">Rest Day</div>}
                                                     </div>
                                                 </div>
-                                            );
-                                        })}
+                                            )}
+                                        </div>
                                     </div>
-                                )}
-                            </div>
-                        );
-                    })}
+                                );
+                            })}
+                        </div>
+                    )}
                 </div>
             );
         };
 
-        // 5. LIBRARY PAGE (Fixed Duplicates)
-        const LibraryPage = ({ historyData }) => {
+        // 5. CATALOG WIDGET (LIBRARY) (No Changes)
+        const Catalog = ({ historyData }) => {
             const [selectedSplit, setSelectedSplit] = useState("Push");
             const splits = ["Push", "Pull", "Legs", "Upper", "Lower", "Full Body", "Cardio", "Arms", "Abs"];
             const exercises = useMemo(() => {
                 const uniqueSet = new Set();
                 const displayList = [];
-                
                 if(historyData) {
                     Object.values(historyData).forEach(day => {
-                        // Check multiple possible split locations
                         const daySplit = day.split || day.raghendh?.split || day.devanandh?.split;
                         if(daySplit === selectedSplit) {
                             ['raghendh', 'devanandh'].forEach(u => {
@@ -648,55 +736,45 @@
             }, [historyData, selectedSplit]);
 
             return (
-                <div className="pb-28 pt-2 px-1 fade-in">
-                    <h2 className="text-xl font-medium text-white mb-4 ml-1">Exercise Library</h2>
-                    <div className="flex flex-wrap gap-2 mb-6">
+                <div className="pb-24 pt-2 fade-in">
+                    <h2 className="text-xl font-bold text-textMain mb-4 px-2">Exercise Catalog</h2>
+                    <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 px-2 -mx-2 mb-4">
                         {splits.map(s => (
-                            <button key={s} onClick={() => setSelectedSplit(s)} className={`px-4 py-1.5 rounded-lg text-sm font-medium border transition-all ${selectedSplit === s ? 'bg-dodPurple border-dodPurple text-white' : 'bg-transparent border-white/20 text-gray-400'}`}>
+                            <button key={s} onClick={() => setSelectedSplit(s)} className={`whitespace-nowrap px-4 py-2 rounded-xl text-xs font-bold border transition-all ${selectedSplit === s ? 'bg-textMain text-bg border-textMain' : 'bg-surface border-border text-textMuted hover:bg-surfaceLight'}`}>
                                 {s}
                             </button>
                         ))}
                     </div>
                     
-                    <div className="bg-dodCard rounded-xl border border-dodInput p-4 shadow-sm">
-                        <h3 className="text-dodPurple text-xs uppercase tracking-widest font-bold mb-4">{selectedSplit} Exercises ({exercises.length})</h3>
-                        <div className="space-y-3">
-                            {exercises.length === 0 ? <div className="text-gray-500 italic text-sm">No exercises found for this split.</div> : 
-                                exercises.map((ex, i) => (
-                                    <div key={i} className="py-2 border-b border-dodInput last:border-0 text-sm text-white flex items-center gap-3">
-                                        <i className="ph-fill ph-barbell text-dodPurple text-lg"></i> {ex}
+                    <div className="glass-panel rounded-3xl p-1 min-h-[300px]">
+                        {exercises.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center h-64 text-textMuted opacity-50">
+                                <i className="ph-duotone ph-barbell text-4xl mb-2"></i>
+                                <p className="text-sm">No exercises found</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 divide-y divide-white/5">
+                                {exercises.map((ex, i) => (
+                                    <div key={i} className="p-4 flex items-center gap-4 hover:bg-white/5 transition-colors first:rounded-t-3xl last:rounded-b-3xl">
+                                        <div className="w-8 h-8 rounded-lg bg-surface flex items-center justify-center text-primary">
+                                            <i className="ph-fill ph-check-circle"></i>
+                                        </div>
+                                        <span className="text-sm font-medium text-textMain">{ex}</span>
                                     </div>
-                                ))
-                            }
-                        </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
             );
         };
 
-        // --- MAIN APP SHELL ---
-        const App = () => {
+        // --- APP LAYOUT ---
+        const Layout = () => {
             const [tab, setTab] = useState("raghendh");
             const [isAuth, setIsAuth] = useState(false);
             const [authError, setAuthError] = useState(null);
             const [allHistory, setAllHistory] = useState(null);
-            
-            const [scrollP, setScrollP] = useState(0);
-            const mainRef = useRef(null);
-
-            // Updated Max Height Calculation
-            const maxHeight = 255; 
-            const minHeight = 110;
-            const heightDiff = maxHeight - minHeight;
-            
-            // Interaction Tweak: Slower transition
-            // We want the shrinking to happen over a longer scroll distance for a smoother feel.
-            const transitionDistance = 250; // Pixels of scroll to complete the transition
-
-            const handleScroll = (e) => {
-                const p = Math.min(e.target.scrollTop / transitionDistance, 1);
-                setScrollP(p);
-            };
 
             useEffect(() => {
                 if(!window.auth) return;
@@ -709,91 +787,89 @@
 
             if (authError) return <SetupScreen error={authError} />;
             if (!isAuth) return (
-                <div className="h-screen bg-dodBg flex flex-col items-center justify-center">
-                    <h1 className="text-6xl font-black text-white tracking-tighter italic animate-pulse">DOD</h1>
-                    <p className="text-dodPurple text-xs font-bold tracking-[0.5em] uppercase mt-2">Loading Gym...</p>
+                <div className="h-screen bg-bg flex flex-col items-center justify-center relative overflow-hidden">
+                    <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
+                    <div className="relative z-10 flex flex-col items-center">
+                         <div className="w-24 h-24 rounded-3xl bg-surface border border-border flex items-center justify-center mb-8 shadow-neon-purple animate-bounce">
+                             <span className="font-teko text-5xl font-bold text-white">DOD</span>
+                         </div>
+                        <div className="h-1 w-32 bg-surfaceLight rounded-full overflow-hidden">
+                            <div className="h-full bg-primary animate-[width_1s_ease-in-out_infinite] w-1/2"></div>
+                        </div>
+                    </div>
                 </div>
             );
 
+            const themes = {
+                raghendh: { text: 'text-primary', bg: 'bg-primary', shadow: 'neon-purple', gradient: 'from-purple-500 to-indigo-500' },
+                devanandh: { text: 'text-secondary', bg: 'bg-secondary', shadow: 'neon-green', gradient: 'from-green-500 to-emerald-500' }
+            };
+
             return (
-                <div className="max-w-md mx-auto h-screen bg-dodBg relative font-sans text-white overflow-hidden flex flex-col">
-                    {/* FIXED HEADER */}
-                    <div 
-                        className="fixed top-0 max-w-md w-full z-40 bg-dodBg/95 backdrop-blur-sm border-b border-white/5 transition-all duration-300 ease-out"
-                        style={{
-                            height: `${maxHeight - (scrollP * heightDiff)}px`, // 255 -> 110 (shrinks by 145px total, but over 300px scroll)
-                            paddingTop: '1rem',
-                            paddingBottom: '0.5rem'
-                        }}
-                    >
-                        {/* Title Section (Fades Out) */}
-                        <div 
-                            className="px-4 flex items-end justify-between mb-4 overflow-hidden"
-                            style={{
-                                opacity: 1 - (scrollP * 3), 
-                                height: `${Math.max(0, 60 - (scrollP * 120))}px`,
-                                marginBottom: `${Math.max(0, 16 - (scrollP * 32))}px`
-                            }}
-                        >
-                            <div>
-                                <h1 className="text-5xl font-black text-white leading-none tracking-tighter italic">DOD</h1>
-                                <p className="text-dodPurple text-[0.6rem] font-bold tracking-[0.6em] uppercase pl-1">do or die</p>
-                            </div>
-                            <div className="text-[10px] font-bold text-gray-400 bg-dodInput px-3 py-1 rounded-full border border-dodInput">{getTodayDateString()}</div>
-                        </div>
+                <div className="max-w-md mx-auto h-screen bg-bg text-textMain relative overflow-hidden flex flex-col font-sans">
+                    {/* Ambient Background Mesh */}
+                    <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[40%] rounded-full bg-purple-900/20 blur-[100px] pointer-events-none"></div>
+                    <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[40%] rounded-full bg-green-900/20 blur-[100px] pointer-events-none"></div>
+
+                    {/* Main Scrollable Content */}
+                    <main className="flex-1 overflow-y-auto no-scrollbar scroll-smooth px-5 pb-5">
                         
-                        {/* Stopwatches (Always Visible, scale down) */}
-                        <div className="flex justify-between -mx-1 px-4 h-full">
-                            <Stopwatch label="Ragh" theme="purple" progress={scrollP} />
-                            <Stopwatch label="Dev" theme="green" progress={scrollP} />
+                        {/* Changed: Title is now inside scrollable area (scrolls away) */}
+                        <div className="pt-6 pb-2">
+                            <div className="flex justify-between items-center mb-4">
+                                <div>
+                                    <h1 className="font-teko text-3xl font-bold leading-none tracking-wide text-white">DO OR DIE</h1>
+                                    <p className="text-[10px] font-bold text-textMuted uppercase tracking-widest">{formatDatePretty()}</p>
+                                </div>
+                                <div className="w-8 h-8 rounded-full bg-surface border border-border flex items-center justify-center">
+                                    <i className="ph-bold ph-user text-textMuted"></i>
+                                </div>
+                            </div>
                         </div>
-                    </div>
 
-                    {/* SCROLLABLE MAIN CONTAINER */}
-                    <main 
-                        ref={mainRef}
-                        onScroll={handleScroll}
-                        className="flex-1 overflow-y-auto no-scrollbar scroll-smooth relative"
-                    >
-                        {/* Invisible spacer fixed to 320px to remain same as previous state */}
-                        <div style={{ height: '320px' }}></div> 
-
-                        {/* CONTENT */}
-                        <div className="px-4 pb-32">
-                            {tab === 'raghendh' && <WorkoutLogger userKey="raghendh" allHistory={allHistory} themeBg="bg-dodPurple" themeBorder="border-dodPurple" themeText="text-dodPurple" />}
-                            {tab === 'devanandh' && <WorkoutLogger userKey="devanandh" allHistory={allHistory} themeBg="bg-dodGreen" themeBorder="border-dodGreen" themeText="text-dodGreen" />}
-                            {tab === 'history' && <HistoryPage historyData={allHistory} />}
-                            {tab === 'library' && <LibraryPage historyData={allHistory} />}
+                        {/* Changed: Stopwatches are in sticky container, moved inside scrollview */}
+                        <div className="sticky top-0 z-40 py-2 bg-bg/95 backdrop-blur-xl -mx-5 px-5 border-b border-white/5 mb-4 shadow-glass transition-all">
+                            <div className="flex gap-3">
+                                <StopwatchWidget label="Ragh" colorClass="text-primary" shadowClass="shadow-neon-purple" />
+                                <StopwatchWidget label="Dev" colorClass="text-secondary" shadowClass="shadow-neon-green" />
+                            </div>
                         </div>
+
+                        {/* Tab Content */}
+                        {tab === 'raghendh' && <Dashboard userKey="raghendh" allHistory={allHistory} colorTheme={themes.raghendh} />}
+                        {tab === 'devanandh' && <Dashboard userKey="devanandh" allHistory={allHistory} colorTheme={themes.devanandh} />}
+                        {tab === 'history' && <Timeline historyData={allHistory} />}
+                        {tab === 'library' && <Catalog historyData={allHistory} />}
                     </main>
 
-                    {/* BOTTOM NAVIGATION (Solid Opaque Navy) */}
-                    <nav className="absolute bottom-0 w-full bg-dodCard h-14 flex justify-around items-center border-t border-dodInput z-50 shadow-2xl">
-                        {[
-                            { id: 'raghendh', icon: 'ph-barbell', label: 'Ragh', color: 'dodPurple' },
-                            { id: 'devanandh', icon: 'ph-sneaker-move', label: 'Dev', color: 'dodGreen' },
-                            { id: 'history', icon: 'ph-clock-counter-clockwise', label: 'History', color: 'white' },
-                            { id: 'library', icon: 'ph-books', label: 'Library', color: 'white' }
-                        ].map(item => {
-                            const isActive = tab === item.id;
-                            const activeClass = item.id === 'raghendh' ? 'text-dodPurple' : item.id === 'devanandh' ? 'text-dodGreen' : 'text-white';
-                            
-                            return (
-                                <button key={item.id} onClick={() => setTab(item.id)} className="flex flex-col items-center justify-center w-16 group">
-                                    <div className={`transition-all duration-200 ${isActive ? activeClass : 'text-gray-500 group-hover:text-gray-300'}`}>
-                                        <i className={`${isActive ? 'ph-fill' : 'ph-bold'} ${item.icon} text-2xl`}></i>
-                                    </div>
-                                    <span className={`text-[9px] font-bold mt-0.5 ${isActive ? activeClass : 'text-gray-600'}`}>{item.label}</span>
-                                </button>
-                            );
-                        })}
-                    </nav>
+                    {/* Floating Island Navigation */}
+                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50">
+                        <nav className="glass-panel rounded-2xl px-2 py-2 flex items-center gap-1 shadow-glass border border-white/10 scale-100 origin-bottom hover:scale-105 transition-transform duration-300">
+                            {[
+                                { id: 'raghendh', icon: 'ph-barbell', activeColor: 'bg-primary text-white shadow-neon-purple' },
+                                { id: 'devanandh', icon: 'ph-sneaker-move', activeColor: 'bg-secondary text-white shadow-neon-green' },
+                                { id: 'history', icon: 'ph-clock-counter-clockwise', activeColor: 'bg-textMain text-bg' },
+                                { id: 'library', icon: 'ph-books', activeColor: 'bg-textMain text-bg' }
+                            ].map(item => {
+                                const isActive = tab === item.id;
+                                return (
+                                    <button 
+                                        key={item.id} 
+                                        onClick={() => setTab(item.id)} 
+                                        className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 ${isActive ? item.activeColor : 'text-textMuted hover:bg-white/5 hover:text-textMain'}`}
+                                    >
+                                        <i className={`${isActive ? 'ph-fill' : 'ph-bold'} ${item.icon} text-xl`}></i>
+                                    </button>
+                                );
+                            })}
+                        </nav>
+                    </div>
                 </div>
             );
         };
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
+        root.render(<Layout />);
 
         if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.protocol === 'http:')) {
             window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js').catch(console.error); });
