@@ -15,7 +15,7 @@
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&family=Teko:wght@300..700&display=swap" rel="stylesheet">
     
     <!-- React & ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
@@ -74,6 +74,7 @@
                     fontFamily: {
                         sans: ['Roboto', 'sans-serif'],
                         mono: ['Roboto Mono', 'monospace'],
+                        teko: ['Teko', 'sans-serif'],
                     },
                     boxShadow: {
                         'glow': '0 0 20px rgba(255, 255, 255, 0.05)',
@@ -152,39 +153,33 @@
                 ? `linear-gradient(145deg, #A855F7 ${100 - p*50}%, #6b21a8)` 
                 : `linear-gradient(145deg, #22C55E ${100 - p*50}%, #14532d)`;
             
-            // Tuned Sizes: Start smaller, End larger than before
-            // Start: 2rem time, 1rem padding
-            // End: 1.25rem time, 0.5rem padding
-            const fontSizeTime = 2 - (p * 0.75); 
-            const fontSizeDecis = 1 - (p * 1); // Hides decimal
+            // Tuned Sizes: TEKO is condensed, so we make sizes HUGE for impact
+            // Start: 5.5rem time, End: 3rem time
+            const fontSizeTime = 5.5 - (p * 2.5); 
+            const fontSizeDecis = 2.5 - (p * 1.5); // Hides decimal
             const paddingY = 1 - (p * 0.5); 
-            const buttonOpacity = 1 - (p * 4); // Fades quickly
-            const labelSize = 0.65 - (p * 0.15);
+            
+            // Name label size: Start 2.5rem, End 1.5rem
+            const labelSize = 2.5 - (p * 1);
 
             return (
                 <div 
                     onClick={toggle} 
-                    className="flex-1 mx-1 rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-transform active:scale-95 shadow-lg overflow-hidden relative border border-white/10"
+                    className="flex-1 mx-1 rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-transform active:scale-95 shadow-xl overflow-hidden relative border border-white/20 group"
                     style={{
                         background: cardBg,
                         paddingTop: `${Math.max(0.5, paddingY)}rem`,
                         paddingBottom: `${Math.max(0.5, paddingY)}rem`,
+                        boxShadow: 'inset 0 0 20px rgba(0,0,0,0.2)'
                     }}
                 >
-                    <span className="text-xs font-black tracking-widest uppercase mb-0 text-white/80" style={{ fontSize: `${labelSize}rem`, opacity: 0.8 }}>
+                    <span className="font-teko font-bold tracking-wide uppercase mb-0 text-white/90 leading-none drop-shadow-md" style={{ fontSize: `${labelSize}rem` }}>
                         {label}
                     </span>
                     
-                    <div className="font-mono font-bold tracking-tighter tabular-nums flex items-baseline text-white" style={{ fontSize: `${fontSizeTime}rem`, lineHeight: 1 }}>
+                    <div className="font-teko font-medium tracking-tight tabular-nums flex items-baseline text-white leading-none mt-0 drop-shadow-lg" style={{ fontSize: `${fontSizeTime}rem` }}>
                         {format(time)}
-                        <span style={{ fontSize: `${Math.max(0, fontSizeDecis)}rem`, opacity: 0.6, width: p > 0.5 ? 0 : 'auto' }}>.{decis}</span>
-                    </div>
-                    
-                    {/* Collapsible Button Area */}
-                    <div style={{ height: p > 0.2 ? 0 : 'auto', opacity: Math.max(0, buttonOpacity), marginTop: p > 0.2 ? 0 : '0.5rem', overflow: 'hidden' }}>
-                        <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest bg-black/20 text-white`}>
-                            {isRunning ? 'Reset' : 'Start'}
-                        </div>
+                        <span className="font-light text-white/60" style={{ fontSize: `${Math.max(0, fontSizeDecis)}rem`, width: p > 0.5 ? 0 : 'auto' }}>.{decis}</span>
                     </div>
                 </div>
             );
@@ -447,19 +442,61 @@
             const [expandedDay, setExpandedDay] = useState(null); 
 
             const toggleRemark = (id) => setViewRemarks(prev => ({...prev, [id]: !prev[id]}));
+            
+            // Fixed: Deduplicate names by trimming and ignoring case to organize the list
             const allExerciseNames = useMemo(() => {
-                const names = new Set();
-                if (historyData) Object.values(historyData).forEach(dateObj => ['raghendh', 'devanandh'].forEach(u => dateObj[u]?.exercises?.forEach(e => { if(e.name) names.add(e.name) })));
-                return Array.from(names).sort();
+                const uniqueNames = new Map();
+                if (historyData) {
+                    Object.values(historyData).forEach(dateObj => {
+                        ['raghendh', 'devanandh'].forEach(u => {
+                            dateObj[u]?.exercises?.forEach(e => { 
+                                if(e.name) {
+                                    const clean = e.name.trim();
+                                    const lower = clean.toLowerCase();
+                                    
+                                    // Store the version that looks best (Capitalized over lowercase)
+                                    if (!uniqueNames.has(lower)) {
+                                        uniqueNames.set(lower, clean);
+                                    } else {
+                                        // If existing is lower and new is Capitalized, update it to look nicer
+                                        const existing = uniqueNames.get(lower);
+                                        if (existing[0] === existing[0].toLowerCase() && clean[0] === clean[0].toUpperCase()) {
+                                            uniqueNames.set(lower, clean);
+                                        }
+                                    }
+                                }
+                            });
+                        });
+                    });
+                }
+                return Array.from(uniqueNames.values()).sort();
             }, [historyData]);
+
             const dates = Object.keys(historyData || {}).sort().reverse();
+            
             const searchResults = useMemo(() => {
                 if (!searchTerm) return null;
+                // Trim search term to ensure trailing spaces don't break matches
+                const term = searchTerm.trim().toLowerCase();
+                if (!term) return null;
+
                 const res = { raghendh: [], devanandh: [] };
                 dates.forEach(date => {
                     const dayData = historyData[date];
                     ['raghendh', 'devanandh'].forEach(u => {
-                        if (dayData[u]?.exercises) dayData[u].exercises.forEach(ex => { if (ex.name.toLowerCase().includes(searchTerm.toLowerCase())) res[u].push({ date, split: dayData.split || dayData[u].split, bw: dayData[u].bodyWeight, exercise: ex }); });
+                        if (dayData[u]?.exercises) {
+                            dayData[u].exercises.forEach(ex => { 
+                                // Robust matching: trim both source and term
+                                if (ex.name && ex.name.trim().toLowerCase().includes(term)) {
+                                    res[u].push({ 
+                                        date, 
+                                        split: dayData.split || dayData[u].split, 
+                                        bw: dayData[u].bodyWeight, 
+                                        exercise: ex 
+                                    }); 
+                                }
+                            });
+                        }
                     });
                 });
                 return res;
@@ -648,13 +685,16 @@
             const mainRef = useRef(null);
 
             // Updated Max Height Calculation
-            // Changed to 255px per request
             const maxHeight = 255; 
             const minHeight = 110;
-            const scrollRange = maxHeight - minHeight; // 145px range
+            const heightDiff = maxHeight - minHeight;
+            
+            // Interaction Tweak: Slower transition
+            // We want the shrinking to happen over a longer scroll distance for a smoother feel.
+            const transitionDistance = 250; // Pixels of scroll to complete the transition
 
             const handleScroll = (e) => {
-                const p = Math.min(e.target.scrollTop / scrollRange, 1);
+                const p = Math.min(e.target.scrollTop / transitionDistance, 1);
                 setScrollP(p);
             };
 
@@ -681,7 +721,7 @@
                     <div 
                         className="fixed top-0 max-w-md w-full z-40 bg-dodBg/95 backdrop-blur-sm border-b border-white/5 transition-all duration-300 ease-out"
                         style={{
-                            height: `${maxHeight - (scrollP * scrollRange)}px`, // 255 -> 110
+                            height: `${maxHeight - (scrollP * heightDiff)}px`, // 255 -> 110 (shrinks by 145px total, but over 300px scroll)
                             paddingTop: '1rem',
                             paddingBottom: '0.5rem'
                         }}
@@ -704,8 +744,8 @@
                         
                         {/* Stopwatches (Always Visible, scale down) */}
                         <div className="flex justify-between -mx-1 px-4 h-full">
-                            <Stopwatch label="RAGHENDH" theme="purple" progress={scrollP} />
-                            <Stopwatch label="DEVANANDH" theme="green" progress={scrollP} />
+                            <Stopwatch label="Ragh" theme="purple" progress={scrollP} />
+                            <Stopwatch label="Dev" theme="green" progress={scrollP} />
                         </div>
                     </div>
 
@@ -730,8 +770,8 @@
                     {/* BOTTOM NAVIGATION (Solid Opaque Navy) */}
                     <nav className="absolute bottom-0 w-full bg-dodCard h-14 flex justify-around items-center border-t border-dodInput z-50 shadow-2xl">
                         {[
-                            { id: 'raghendh', icon: 'ph-barbell', label: 'Raghendh', color: 'dodPurple' },
-                            { id: 'devanandh', icon: 'ph-sneaker-move', label: 'Devanandh', color: 'dodGreen' },
+                            { id: 'raghendh', icon: 'ph-barbell', label: 'Ragh', color: 'dodPurple' },
+                            { id: 'devanandh', icon: 'ph-sneaker-move', label: 'Dev', color: 'dodGreen' },
                             { id: 'history', icon: 'ph-clock-counter-clockwise', label: 'History', color: 'white' },
                             { id: 'library', icon: 'ph-books', label: 'Library', color: 'white' }
                         ].map(item => {
