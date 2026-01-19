@@ -1099,6 +1099,43 @@
                 value: (parseFloat(w.value) / ((displayHeight/100) ** 2)).toFixed(1)
             }));
 
+            // Calculate Focus Stats (Splits per Month)
+            const focusStats = useMemo(() => {
+                if (!allHistory) return [];
+                const stats = {};
+
+                // Filter valid date keys to avoid 'profiles' etc.
+                const validDates = Object.keys(allHistory).filter(k => k.match(/^\d{4}-\d{2}-\d{2}$/));
+
+                validDates.forEach(date => {
+                    const dayData = allHistory[date];
+                    const uData = dayData[userKey];
+
+                    // Count only if user has exercises (completed workout)
+                    if (uData && uData.exercises && uData.exercises.length > 0) {
+                        const dateObj = new Date(date);
+                        const monthKey = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
+                        const monthLabel = dateObj.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                        
+                        // Determine Split
+                        let split = dayData.split || uData.split || "Unknown";
+                        // If split is "Rest", usually no exercises, but just in case
+                        if(split === "Rest") return; 
+
+                        if (!stats[monthKey]) {
+                            stats[monthKey] = { label: monthLabel, counts: {}, total: 0 };
+                        }
+                        
+                        stats[monthKey].counts[split] = (stats[monthKey].counts[split] || 0) + 1;
+                        stats[monthKey].total += 1;
+                    }
+                });
+
+                return Object.entries(stats)
+                    .sort((a, b) => b[0].localeCompare(a[0]))
+                    .map(([key, val]) => val);
+            }, [allHistory, userKey]);
+
             return (
                 <div className="fade-in pt-4 px-5 pb-10">
                     <button onClick={onBack} className="mb-6 flex items-center gap-2 text-textMuted hover:text-white">
@@ -1182,6 +1219,32 @@
                                 <span className={`text-5xl font-bold ${bmi > 25 ? 'text-orange-400' : bmi < 18.5 ? 'text-blue-400' : 'text-green-400'}`}>{bmi}</span>
                                 <span className="text-xs text-textMuted font-bold uppercase tracking-wider block mt-1">BMI Score</span>
                             </div>
+                        </div>
+                    </div>
+
+                    {/* Focus Stats Section */}
+                    <div className="mt-6">
+                        <h3 className="text-lg font-bold text-textMain mb-3 uppercase tracking-wider">Monthly Focus Breakdown</h3>
+                        <div className="space-y-3">
+                            {focusStats.map((stat, i) => (
+                                <div key={i} className="glass-panel rounded-2xl p-4">
+                                    <div className="flex justify-between items-end mb-3 border-b border-white/5 pb-2">
+                                        <span className="font-bold text-textMain text-lg leading-none">{stat.label}</span>
+                                        <span className="text-xs text-textMuted font-mono bg-white/5 px-2 py-1 rounded">{stat.total} Workouts</span>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        {Object.entries(stat.counts).map(([split, count]) => (
+                                            <div key={split} className="flex items-center gap-2 bg-surface border border-border px-3 py-1.5 rounded-lg">
+                                                <span className="text-xs font-bold text-textMuted uppercase tracking-wider">{split}</span>
+                                                <span className={`text-sm font-bold ${staticData.color}`}>{count}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                            {focusStats.length === 0 && (
+                                <div className="text-center text-textMuted text-sm py-4 italic">No workout history found.</div>
+                            )}
                         </div>
                     </div>
 
