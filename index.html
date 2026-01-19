@@ -65,7 +65,7 @@
                 extend: {
                     colors: {
                         // Modern Palette
-                        bg: '#09090b',     // Zinc 950
+                        bg: '#09090b',      // Zinc 950
                         surface: '#18181b', // Zinc 900
                         surfaceLight: '#27272a', // Zinc 800
                         primary: '#a855f7', // Purple
@@ -124,6 +124,9 @@
 
     <script type="text/babel">
         const { useState, useEffect, useRef, useMemo } = React;
+
+        // HELPER: Normalize strings to Uppercase for consistency
+        const normalize = (str) => str ? str.trim().toUpperCase() : "";
 
         const getTodayDateString = () => {
             const date = new Date();
@@ -429,7 +432,7 @@
             );
         };
 
-        // 2. EXERCISE CARD (No Changes)
+        // 2. EXERCISE CARD
         const ExerciseCard = ({ exercise, exIndex, updateExercise, deleteExercise, suggestionList, isExpanded, onToggleExpand, userKey, allHistory, colorTheme }) => {
             const [showRemark, setShowRemark] = useState(!!exercise.remark);
             const [showSuggestions, setShowSuggestions] = useState(false);
@@ -437,18 +440,20 @@
             
             const filteredSuggestions = useMemo(() => {
                 if (!exercise.name) return suggestionList.slice(0, 5); 
-                const lowerInput = exercise.name.toLowerCase();
-                return suggestionList.filter(s => s.toLowerCase().includes(lowerInput)).slice(0, 5);
+                const lowerInput = normalize(exercise.name);
+                return suggestionList.filter(s => s.includes(lowerInput)).slice(0, 5);
             }, [exercise.name, suggestionList]);
 
             const pastNotes = useMemo(() => {
                 if(!showNotesHistory || !allHistory || !exercise.name) return [];
                 const notes = [];
+                const targetName = normalize(exercise.name);
+
                 Object.entries(allHistory).forEach(([date, dayData]) => {
                     const uData = dayData[userKey];
                     if(uData && uData.exercises) {
                         uData.exercises.forEach(ex => {
-                            if(ex.name === exercise.name && ex.remark) notes.push({date, remark: ex.remark});
+                            if(normalize(ex.name) === targetName && ex.remark) notes.push({date, remark: ex.remark});
                         });
                     }
                 });
@@ -472,7 +477,7 @@
                                 <span className="font-teko text-xl font-bold">{exIndex + 1}</span>
                             </div>
                             <div>
-                                <h3 className="text-textMain font-semibold text-lg leading-tight">{exercise.name || "New Exercise"}</h3>
+                                <h3 className="text-textMain font-semibold text-lg leading-tight uppercase">{exercise.name || "NEW EXERCISE"}</h3>
                                 <div className="flex items-center gap-2 mt-1">
                                     <span className="text-[10px] font-bold uppercase tracking-wider text-textMuted bg-surfaceLight px-1.5 py-0.5 rounded">{exercise.sets?.length || 0} Sets</span>
                                     {exercise.remark && <i className="ph-fill ph-note text-textMuted text-xs"></i>}
@@ -492,17 +497,17 @@
                         <div className="flex-1 relative">
                             <input 
                                 value={exercise.name}
-                                onChange={(e) => { updateExercise(exIndex, {...exercise, name: e.target.value}); setShowSuggestions(true); }}
+                                onChange={(e) => { updateExercise(exIndex, {...exercise, name: e.target.value.toUpperCase()}); setShowSuggestions(true); }}
                                 onFocus={() => setShowSuggestions(true)}
                                 onBlur={() => setTimeout(() => setShowSuggestions(false), 200)} 
-                                className="w-full bg-transparent text-2xl font-bold text-textMain placeholder-textMuted/30 border-none p-0 focus:ring-0 leading-none"
-                                placeholder="Name..."
+                                className="w-full bg-transparent text-2xl font-bold text-textMain placeholder-textMuted/30 border-none p-0 focus:ring-0 leading-none uppercase"
+                                placeholder="NAME..."
                                 autoComplete="off"
                             />
                             {showSuggestions && filteredSuggestions.length > 0 && (
                                 <ul className="absolute left-0 top-full w-full bg-surfaceLight border border-border rounded-xl mt-2 shadow-2xl z-50 max-h-48 overflow-y-auto overflow-x-hidden">
                                     {filteredSuggestions.map((suggestion, i) => (
-                                        <li key={i} onMouseDown={(e) => { e.preventDefault(); handleNameSelect(suggestion); }} className="px-4 py-3 text-sm text-textMain hover:bg-white/10 cursor-pointer border-b border-white/5 last:border-0">
+                                        <li key={i} onMouseDown={(e) => { e.preventDefault(); handleNameSelect(suggestion); }} className="px-4 py-3 text-sm text-textMain hover:bg-white/10 cursor-pointer border-b border-white/5 last:border-0 uppercase">
                                             {suggestion}
                                         </li>
                                     ))}
@@ -606,19 +611,60 @@
             );
         };
 
-        // 3. MAIN DASHBOARD WIDGET (No Changes)
+        // 3. MAIN DASHBOARD WIDGET
         const Dashboard = ({ userKey, allHistory, colorTheme }) => {
             const [split, setSplit] = useState("");
             const [bodyWeight, setBodyWeight] = useState("");
             const [exercises, setExercises] = useState([]);
             const [status, setStatus] = useState("");
-            const [expandedIndex, setExpandedIndex] = useState(0); 
+            // Default to -1 so all cards are collapsed by default
+            const [expandedIndex, setExpandedIndex] = useState(-1); 
             const date = getTodayDateString();
 
+            // Modified to share suggestions across ALL users
             const suggestionList = useMemo(() => {
                 const historySet = new Set();
-                if (allHistory) Object.values(allHistory).forEach(dateObj => { const userData = dateObj[userKey]; if (userData?.exercises) userData.exercises.forEach(e => { if (e.name) historySet.add(e.name); }); });
+                if (allHistory) {
+                    Object.values(allHistory).forEach(dateObj => { 
+                        // Iterate through both known users
+                        ['raghendh', 'devanandh'].forEach(u => {
+                            const userData = dateObj[u]; 
+                            if (userData?.exercises) {
+                                userData.exercises.forEach(e => { 
+                                    if (e.name) historySet.add(normalize(e.name)); // Normalize here
+                                }); 
+                            }
+                        });
+                    });
+                }
                 return Array.from(historySet).sort();
+            }, [allHistory]); // Removed userKey dependency so it updates from global history
+
+            // Auto-fill Rest Day logic
+            useEffect(() => {
+                if (!allHistory || !userKey) return;
+                
+                // Determine Yesterday's date
+                const today = new Date();
+                const yesterday = new Date(today);
+                yesterday.setDate(yesterday.getDate() - 1);
+                
+                const yYear = yesterday.getFullYear();
+                const yMonth = String(yesterday.getMonth() + 1).padStart(2, '0');
+                const yDay = String(yesterday.getDate()).padStart(2, '0');
+                const yStr = `${yYear}-${yMonth}-${yDay}`;
+
+                // Check if entry exists for yesterday
+                const dayData = allHistory[yStr];
+                
+                // If the entire day node is missing OR the specific user node is missing/empty
+                if (!dayData || !dayData[userKey]) {
+                    // Automatically assign as Rest Day
+                    window.update(window.ref(window.db, `${yStr}/${userKey}`), {
+                        split: "Rest",
+                        exercises: []
+                    }).catch(console.error);
+                }
             }, [allHistory, userKey]);
 
             useEffect(() => {
@@ -629,7 +675,7 @@
                     setSplit(data.split || userData.split || "");
                     setBodyWeight(userData.bodyWeight || "");
                     setExercises(userData.exercises || []);
-                    if(userData.exercises?.length === 0) setExpandedIndex(0);
+                    // We do NOT reset expandedIndex to 0 here to keep it collapsed
                 });
                 return () => unsubscribe();
             }, [userKey, date]);
@@ -639,7 +685,7 @@
                 setStatus("Saving...");
                 try {
                     let cleanExercises = exercises;
-                    if (updates.exercises) cleanExercises = updates.exercises.map(ex => ({...ex, name: ex.name.trim()}));
+                    if (updates.exercises) cleanExercises = updates.exercises.map(ex => ({...ex, name: normalize(ex.name)})); // Force Normalize/Uppercase on save
                     const personalUpdate = {};
                     if(updates.bodyWeight !== undefined) personalUpdate.bodyWeight = updates.bodyWeight;
                     if(updates.exercises !== undefined) personalUpdate.exercises = cleanExercises;
@@ -650,10 +696,12 @@
 
             const handleAddExercise = () => {
                 const newEx = [...exercises, { name: "", sets: [{weight: '', reps: '', uni: false}] }];
-                setExercises(newEx); setExpandedIndex(newEx.length - 1); updatePersonalData({ exercises: newEx });
+                setExercises(newEx); 
+                setExpandedIndex(newEx.length - 1); // Expand ONLY the new card
+                updatePersonalData({ exercises: newEx });
             };
             const handleUpdateExercise = (index, data) => { const newEx = [...exercises]; newEx[index] = data; setExercises(newEx); updatePersonalData({ exercises: newEx }); };
-            const handleDeleteExercise = (index) => { const newEx = exercises.filter((_, i) => i !== index); setExercises(newEx); setExpandedIndex(prev => prev > 0 ? prev - 1 : 0); updatePersonalData({ exercises: newEx }); };
+            const handleDeleteExercise = (index) => { const newEx = exercises.filter((_, i) => i !== index); setExercises(newEx); setExpandedIndex(-1); updatePersonalData({ exercises: newEx }); };
 
             const splits = ["Push", "Pull", "Legs", "Upper", "Lower", "Full Body", "Cardio", "Arms", "Abs", "Rest"];
 
@@ -729,7 +777,7 @@
             );
         };
 
-        // 4. TIMELINE WIDGET (HISTORY) (No Changes)
+        // 4. TIMELINE WIDGET (HISTORY)
         const Timeline = ({ historyData }) => {
             const [searchTerm, setSearchTerm] = useState("");
             const [expandedDate, setExpandedDate] = useState(null); 
@@ -738,35 +786,30 @@
             const toggleRemark = (id) => setViewRemarks(prev => ({...prev, [id]: !prev[id]}));
 
             const allExerciseNames = useMemo(() => {
-                const uniqueNames = new Map();
+                const uniqueNames = new Set();
                 if (historyData) {
                     Object.values(historyData).forEach(dateObj => {
                         ['raghendh', 'devanandh'].forEach(u => {
                             dateObj[u]?.exercises?.forEach(e => { 
                                 if(e.name) {
-                                    const clean = e.name.trim();
-                                    const lower = clean.toLowerCase();
-                                    if (!uniqueNames.has(lower)) {
-                                        uniqueNames.set(lower, clean);
-                                    } else {
-                                        const existing = uniqueNames.get(lower);
-                                        if (existing[0] === existing[0].toLowerCase() && clean[0] === clean[0].toUpperCase()) {
-                                            uniqueNames.set(lower, clean);
-                                        }
-                                    }
+                                    uniqueNames.add(normalize(e.name)); // Normalize here
                                 }
                             });
                         });
                     });
                 }
-                return Array.from(uniqueNames.values()).sort();
+                return Array.from(uniqueNames).sort();
             }, [historyData]);
 
-            const dates = Object.keys(historyData || {}).sort().reverse();
+            // Filter out non-date keys (like "profiles")
+            const dates = Object.keys(historyData || {})
+                .filter(k => k.match(/^\d{4}-\d{2}-\d{2}$/)) // Strictly match YYYY-MM-DD
+                .sort()
+                .reverse();
             
             const searchResults = useMemo(() => {
                 if (!searchTerm) return null;
-                const term = searchTerm.trim().toLowerCase();
+                const term = normalize(searchTerm);
                 if (!term) return null;
 
                 const res = { raghendh: [], devanandh: [] };
@@ -775,7 +818,7 @@
                     ['raghendh', 'devanandh'].forEach(u => {
                         if (dayData[u]?.exercises) {
                             dayData[u].exercises.forEach(ex => { 
-                                if (ex.name && ex.name.trim().toLowerCase().includes(term)) {
+                                if (ex.name && normalize(ex.name).includes(term)) {
                                     res[u].push({ date, split: dayData.split || dayData[u].split, bw: dayData[u].bodyWeight, exercise: ex }); 
                                 }
                             });
@@ -796,7 +839,7 @@
                             value={searchTerm} 
                             onChange={(e) => setSearchTerm(e.target.value)} 
                             placeholder="Search history..." 
-                            className="bg-transparent border-none flex-1 text-textMain placeholder-textMuted focus:ring-0 text-sm font-medium" 
+                            className="bg-transparent border-none flex-1 text-textMain placeholder-textMuted focus:ring-0 text-sm font-medium uppercase" 
                         />
                         {searchTerm && (
                             <button onClick={() => setSearchTerm("")} className="w-10 h-10 flex items-center justify-center text-textMuted hover:text-white">
@@ -819,7 +862,7 @@
                                                     <span className="text-xs font-bold text-textMuted bg-surface px-2 py-1 rounded-lg">{item.date}</span>
                                                     {item.bw && <span className="text-[10px] text-textMuted">BW: {item.bw}kg</span>}
                                                 </div>
-                                                <h4 className="font-bold text-textMain mb-2">{item.exercise.name}</h4>
+                                                <h4 className="font-bold text-textMain mb-2 uppercase">{item.exercise.name}</h4>
                                                 <div className="flex flex-wrap gap-2">
                                                     {item.exercise.sets?.map((s, si) => (
                                                         <div key={si} className="bg-surface border border-border px-2 py-1 rounded text-xs font-mono text-textMain">
@@ -895,7 +938,7 @@
                                                                                 </div>
                                                                             );
                                                                         })}
-                                                                        {!uData?.exercises && <span className="text-[10px] text-white/20 italic">Rest Day</span>}
+                                                                        {(!uData?.exercises || uData.exercises.length === 0) && <span className="text-[10px] text-white/20 italic">Rest Day</span>}
                                                                     </div>
                                                                 </div>
                                                             );
@@ -928,10 +971,9 @@
                                 if(day[u]?.exercises) {
                                     day[u].exercises.forEach(e => { 
                                         if(e.name) {
-                                            const clean = e.name.trim();
-                                            const lower = clean.toLowerCase();
-                                            if(!uniqueSet.has(lower)) {
-                                                uniqueSet.add(lower);
+                                            const clean = normalize(e.name);
+                                            if(!uniqueSet.has(clean)) {
+                                                uniqueSet.add(clean);
                                                 displayList.push(clean);
                                             }
                                         }
@@ -968,7 +1010,7 @@
                                         <div className="w-8 h-8 rounded-lg bg-surface flex items-center justify-center text-primary">
                                             <i className="ph-fill ph-check-circle"></i>
                                         </div>
-                                        <span className="text-sm font-medium text-textMain">{ex}</span>
+                                        <span className="text-sm font-medium text-textMain uppercase">{ex}</span>
                                     </div>
                                 ))}
                             </div>
