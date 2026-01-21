@@ -436,7 +436,12 @@
         const ExerciseCard = ({ exercise, exIndex, updateExercise, deleteExercise, suggestionList, isExpanded, onToggleExpand, userKey, allHistory, colorTheme }) => {
             const [showRemark, setShowRemark] = useState(!!exercise.remark);
             const [showSuggestions, setShowSuggestions] = useState(false);
-            const [showNotesHistory, setShowNotesHistory] = useState(false);
+            
+            // Toggles for new sections
+            const [showPrevSets, setShowPrevSets] = useState(false);
+            const [showPrevNote, setShowPrevNote] = useState(false);
+            const [showPRCalc, setShowPRCalc] = useState(false);
+            const [prPercent, setPrPercent] = useState(50);
             
             const filteredSuggestions = useMemo(() => {
                 if (!exercise.name) return suggestionList.slice(0, 5); 
@@ -444,21 +449,50 @@
                 return suggestionList.filter(s => s.includes(lowerInput)).slice(0, 5);
             }, [exercise.name, suggestionList]);
 
-            const pastNotes = useMemo(() => {
-                if(!showNotesHistory || !allHistory || !exercise.name) return [];
-                const notes = [];
+            // Find the immediate previous session for this exercise
+            const previousSession = useMemo(() => {
+                if(!allHistory || !exercise.name) return null;
                 const targetName = normalize(exercise.name);
-
-                Object.entries(allHistory).forEach(([date, dayData]) => {
+                const today = getTodayDateString();
+                
+                // Get all dates, sort descending to find most recent
+                const sortedDates = Object.keys(allHistory).sort().reverse();
+                
+                for (const date of sortedDates) {
+                    if (date === today) continue; // Skip today
+                    const dayData = allHistory[date];
                     const uData = dayData[userKey];
-                    if(uData && uData.exercises) {
+                    if (uData && uData.exercises) {
+                        const found = uData.exercises.find(ex => normalize(ex.name) === targetName);
+                        if (found) {
+                            return { date, ...found };
+                        }
+                    }
+                }
+                return null;
+            }, [allHistory, exercise.name, userKey]);
+
+            // Calculate Current User's PR for this Exercise
+            const currentPR = useMemo(() => {
+                if (!allHistory || !exercise.name) return 0;
+                let max = 0;
+                const targetName = normalize(exercise.name);
+                
+                Object.values(allHistory).forEach(dayData => {
+                    const uData = dayData[userKey];
+                    if (uData && uData.exercises) {
                         uData.exercises.forEach(ex => {
-                            if(normalize(ex.name) === targetName && ex.remark) notes.push({date, remark: ex.remark});
+                            if (normalize(ex.name) === targetName && ex.sets) {
+                                ex.sets.forEach(s => {
+                                    const w = parseFloat(s.weight);
+                                    if (!isNaN(w) && w > max) max = w;
+                                });
+                            }
                         });
                     }
                 });
-                return notes.sort((a,b) => new Date(b.date) - new Date(a.date));
-            }, [showNotesHistory, allHistory, exercise.name, userKey]);
+                return max;
+            }, [allHistory, exercise.name, userKey]);
 
             const addSet = () => updateExercise(exIndex, { ...exercise, sets: [...(exercise.sets || []), { weight: '', reps: '', uni: false }] });
             const updateSet = (sIndex, field, value) => {
@@ -524,28 +558,97 @@
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2 px-5 py-3 border-b border-border bg-black/20">
-                        <button onClick={() => setShowNotesHistory(!showNotesHistory)} className={`text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors ${showNotesHistory ? 'bg-primary text-white shadow-neon-purple' : 'bg-surface text-textMuted hover:text-textMain'}`}>
+                    <div className="flex items-center gap-2 px-5 py-3 border-b border-border bg-black/20 overflow-x-auto no-scrollbar">
+                        {/* 1. PR Button */}
+                        {currentPR > 0 && (
+                            <button onClick={() => setShowPRCalc(!showPRCalc)} className={`text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors whitespace-nowrap ${showPRCalc ? 'bg-secondary text-white shadow-neon-green' : 'bg-surface text-textMuted hover:text-textMain'}`}>
+                                <i className="ph-bold ph-percent"></i> PR
+                            </button>
+                        )}
+
+                        {/* 2. History Button */}
+                        <button onClick={() => setShowPrevSets(!showPrevSets)} className={`text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors whitespace-nowrap ${showPrevSets ? 'bg-primary text-white shadow-neon-purple' : 'bg-surface text-textMuted hover:text-textMain'}`}>
                             <i className="ph-bold ph-clock-counter-clockwise"></i> History
                         </button>
-                        <button onClick={() => setShowRemark(!showRemark)} className={`text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors ${showRemark || exercise.remark ? 'bg-surfaceLight text-textMain border border-white/10' : 'bg-surface text-textMuted hover:text-textMain'}`}>
+
+                        {/* 3. Note Button */}
+                        <button onClick={() => setShowRemark(!showRemark)} className={`text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors whitespace-nowrap ${showRemark || exercise.remark ? 'bg-surfaceLight text-textMain border border-white/10' : 'bg-surface text-textMuted hover:text-textMain'}`}>
                             <i className="ph-bold ph-notebook"></i> Note
+                        </button>
+
+                        {/* 4. Notes History Icon Button */}
+                        <button 
+                            onClick={() => setShowPrevNote(!showPrevNote)} 
+                            className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ml-auto ${(previousSession && previousSession.remark) ? `${colorTheme.text} bg-white/5 border border-white/5` : 'text-textMuted bg-transparent opacity-50'}`}
+                            disabled={!previousSession}
+                        >
+                            <i className="ph-bold ph-clock-counter-clockwise"></i>
                         </button>
                     </div>
 
-                    {showNotesHistory && (
-                        <div className="bg-black/40 p-4 max-h-40 overflow-y-auto border-b border-border">
-                            {pastNotes.length === 0 ? <p className="text-sm text-textMuted italic">No history found.</p> : 
-                                pastNotes.map((n, i) => (
-                                    <div key={i} className="mb-3 last:mb-0 text-sm">
-                                        <div className="text-xs font-bold text-textMuted mb-0.5">{n.date}</div>
-                                        <div className="text-textMain pl-2 border-l-2 border-primary/50">{n.remark}</div>
-                                    </div>
-                                ))
-                            }
+                    {/* SECTIONS */}
+
+                    {/* PR Calculation Slider */}
+                    {showPRCalc && currentPR > 0 && (
+                        <div className="p-4 bg-black/20 border-b border-border">
+                            <div className="flex justify-between items-center mb-2">
+                                <span className="text-xs font-bold text-textMuted uppercase tracking-wider">PR: {currentPR}kg</span>
+                                <span className="text-xl font-teko font-bold text-primary">{(currentPR * prPercent / 100).toFixed(1)} <span className="text-xs text-textMuted font-sans">KG</span></span>
+                            </div>
+                            <input 
+                                type="range" 
+                                min="0" 
+                                max="100" 
+                                step="10" 
+                                value={prPercent} 
+                                onChange={(e) => setPrPercent(parseInt(e.target.value))}
+                                className="w-full h-2 bg-surfaceLight rounded-lg appearance-none cursor-pointer accent-primary"
+                            />
+                            <div className="flex justify-between items-center mt-2">
+                                <div className="flex justify-between w-full text-[10px] text-textMuted font-mono px-1">
+                                    <span>0%</span>
+                                    <span>50%</span>
+                                    <span>100%</span>
+                                </div>
+                            </div>
+                            <div className="text-center -mt-4">
+                                <span className="text-xs font-bold text-textMain bg-surface border border-border px-2 py-0.5 rounded">{prPercent}%</span>
+                            </div>
                         </div>
                     )}
 
+                    {/* Previous Session Sets Display */}
+                    {showPrevSets && (
+                        <div className="bg-black/40 p-4 border-b border-border">
+                            {previousSession ? (
+                                <div>
+                                    <div className="text-xs font-bold text-textMuted mb-2 uppercase tracking-wider">Last Session: {previousSession.date}</div>
+                                    <div className="space-y-1">
+                                        {(previousSession.sets || []).map((s, i) => (
+                                            <div key={i} className="flex justify-between items-center text-sm font-mono text-textMain bg-white/5 px-2 py-1 rounded">
+                                                <span>{s.weight}kg x {s.reps}</span>
+                                                {s.uni && <span className="text-[10px] text-textMuted border border-white/20 px-1 rounded uppercase">Uni</span>}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ) : (
+                                <p className="text-sm text-textMuted italic">No previous history found.</p>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Previous Session Note Display */}
+                    {showPrevNote && previousSession && (
+                        <div className="p-4 bg-black/30 border-b border-border">
+                            <div className="text-xs font-bold text-textMuted mb-1 uppercase tracking-wider">Note from {previousSession.date}:</div>
+                            <div className="text-sm text-textMain italic pl-2 border-l-2 border-white/20">
+                                {previousSession.remark || "No note recorded."}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Current Note Input */}
                     {showRemark && (
                         <div className="p-4 bg-black/20 border-b border-border">
                             <textarea
