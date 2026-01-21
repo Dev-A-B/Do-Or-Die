@@ -1449,15 +1449,40 @@
                             const normalizedKey = normalizeKey(ex.name);
                             const meta = metaData[normalizedKey];
                             
-                            // Calculate Volume: Just Sets for simplicity in hypertrophy context
-                            // We distribute the set count based on muscle contribution
-                            const sets = ex.sets ? ex.sets.length : 0;
+                            // UPDATED LOGIC HERE
+                            let exerciseStimulus = 0;
+
+                            (ex.sets || []).forEach(s => {
+                              const reps = parseInt(s.reps);
+                              if (!reps) return;
+
+                              // ---- Effort factor (no RPE yet) ----
+                              let effort;
+                              if (reps <= 5) effort = 1.0;
+                              else if (reps <= 8) effort = 0.95;
+                              else if (reps <= 12) effort = 0.85;
+                              else if (reps <= 20) effort = 0.70;
+                              else effort = 0.50;
+
+                              // ---- Intensity factor ----
+                              let intensity;
+                              if (reps <= 5) intensity = 1.0;
+                              else if (reps <= 8) intensity = 0.95;
+                              else if (reps <= 12) intensity = 0.90;
+                              else if (reps <= 20) intensity = 0.80;
+                              else intensity = 0.65;
+
+                              // ---- Unilateral multiplier ----
+                              const uniFactor = s.uni ? 2.0 : 1.0;
+
+                              exerciseStimulus += effort * intensity * uniFactor;
+                            });
                             
                             if (meta && meta.muscles) {
                                 Object.entries(meta.muscles).forEach(([muscle, contribution]) => {
                                     // Normalize muscle name key just in case Gemini output slightly varies case
                                     if (scores[muscle] !== undefined) {
-                                        const vol = sets * parseFloat(contribution);
+                                        const vol = exerciseStimulus * parseFloat(contribution);
                                         scores[muscle] += vol;
 
                                         if (!exerciseBreakdown[muscle][name]) exerciseBreakdown[muscle][name] = 0;
@@ -1534,7 +1559,7 @@
                                                 {s.name}
                                                 <i className={`ph-bold ph-caret-down transition-transform ${expandedMuscle === s.name ? 'rotate-180' : ''}`}></i>
                                             </span>
-                                            <span className="text-textMain">{s.value.toFixed(1)} Sets</span>
+                                            <span className="text-textMain">{s.value.toFixed(1)} Stimulus</span>
                                         </div>
                                         <div className="h-2 bg-white/5 rounded-full overflow-hidden">
                                             <div 
@@ -1568,7 +1593,7 @@
                     </div>
                     
                     <div className="mt-4 text-[10px] text-textMuted text-center opacity-50 px-8">
-                        * Analysis based on AI-generated biomechanics data. Volume is distributed based on muscle involvement ratios.
+                        * Analysis based on AI-generated biomechanics data. Volume is calculated based on Reps × Intensity × Effort × Muscle Recruitment.
                     </div>
                 </div>
             );
