@@ -30,12 +30,23 @@
     <!-- Phosphor Icons -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     
-    <!-- Firebase -->
+    <!-- Import Map for Gemini SDK -->
+    <script type="importmap">
+      {
+        "imports": {
+          "@google/generative-ai": "https://esm.run/@google/generative-ai"
+        }
+      }
+    </script>
+
+    <!-- Firebase & Gemini Logic -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, set, update, onValue, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { getDatabase, ref, set, update, onValue, get, child } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { GoogleGenerativeAI } from "@google/generative-ai";
 
+        // --- CONFIGURATION ---
         const firebaseConfig = {
             apiKey: "AIzaSyByLeOnstoCGQ9vew1NYXtBe2E_xyUVgDg",
             authDomain: "do-or-die-33610.firebaseapp.com",
@@ -47,6 +58,10 @@
             measurementId: "G-V9K09W36L9"
         };
 
+        // GEMINI API KEY
+        const GEMINI_API_KEY = "AIzaSyBBjhctbrz3rX7e2ovsuM7vsLTypjQu8qI"; 
+
+        // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         window.db = getDatabase(app);
         window.auth = getAuth(app);
@@ -55,7 +70,112 @@
         window.update = update;
         window.onValue = onValue;
         window.get = get;
+        window.child = child;
         window.signInAnonymously = signInAnonymously;
+
+        // Initialize Gemini
+        let genAI = null;
+        if (GEMINI_API_KEY) {
+            genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+        }
+
+        // --- GEMINI SERVICE LOGIC ---
+        
+        // Helper to normalize keys for Firebase path
+        const normalizeKey = (str) => str ? str.trim().toUpperCase().replace(/[.#$/[\]]/g, '_') : "";
+
+        // Helper: Try models in sequence
+        async function generateWithFallback(prompt) {
+            if (!genAI) throw new Error("Gemini API Key missing");
+
+            const models = [
+                "gemini-2.5-flash-preview-09-2025",
+                "gemini-2.5-flash-lite-preview-02-05", 
+                "gemini-2.0-flash"
+            ];
+
+            for (const modelName of models) {
+                try {
+                    console.log(`[Gemini] Attempting with model: ${modelName}`);
+                    const model = genAI.getGenerativeModel({ 
+                        model: modelName,
+                        generationConfig: { responseMimeType: "application/json" }
+                    });
+                    const result = await model.generateContent(prompt);
+                    return { result, modelName }; // Return result and which model succeeded
+                } catch (e) {
+                    console.warn(`[Gemini] Failed with ${modelName}:`, e);
+                    // Loop continues to next model
+                }
+            }
+            throw new Error("All Gemini models failed to generate content.");
+        }
+
+        // Core logic
+        window.ensureExerciseMeta = async (exerciseName, forceRefresh = false) => {
+            if (!exerciseName) return;
+
+            const normalizedName = normalizeKey(exerciseName);
+            const dbRef = ref(window.db);
+
+            try {
+                // 1. DATABASE CHECK
+                if (!forceRefresh) {
+                    const snapshot = await get(child(dbRef, `exercise_meta/${normalizedName}`));
+                    if (snapshot.exists()) {
+                        return snapshot.val();
+                    }
+                }
+
+                // 2. GEMINI CALL (With Fallback)
+                console.log(`[Meta] Generating fresh analysis for: ${exerciseName}...`);
+                
+                const prompt = `
+                    Analyze the exercise "${exerciseName}".
+                    Return a JSON object with:
+                    1. "muscles": Object mapping muscle names to an absolute intensity weight (0.0-1.0).
+                       Allowed muscles: Upper Chest, Lower Chest, Pecs, Inner Chest, Outer Chest, Lats, Traps, Mid-Back, Lower Back, Quads, Hamstrings, Glutes, Calves, Inner Thighs, Front Delts, Side Delts, Rear Delts, Biceps, Triceps, Forearms, Abs, Lower Abs, Obliques, Serratus.
+                       
+                       IMPORTANT RULES FOR WEIGHTS:
+                       - Treat weights as absolute recruitment intensity, NOT a percentage of the whole.
+                       - 1.0 = Primary mover (near-max recruitment).
+                       - 0.7-0.9 = Strong secondary mover.
+                       - 0.4-0.6 = Moderate secondary mover.
+                       - 0.1-0.3 = Stabilizer / weak involvement.
+                       - 0.0 = Not meaningfully involved.
+                       - The SUM of all weights CAN and SHOULD exceed 1.0 for compound exercises (e.g. Bench Press sum might be ~2.3).
+                       - For isolation exercises, sum is usually closer to 1.0.
+
+                    2. "description": Short description of movement.
+                    3. "confidence": 0.0-1.0.
+                    
+                    Example 1 (Compound): {"muscles": {"Chest": 1.0, "Triceps": 0.8, "Front Delts": 0.5}, "description": "...", "confidence": 0.95}
+                    Example 2 (Isolation): {"muscles": {"Side Delts": 1.0, "Front Delts": 0.2}, "description": "...", "confidence": 0.95}
+                `;
+
+                const { result, modelName } = await generateWithFallback(prompt);
+                const response = result.response;
+                const text = response.text().replace(/```json|```/g, '').trim();
+                
+                const jsonMeta = JSON.parse(text);
+
+                const finalData = {
+                    ...jsonMeta,
+                    source: modelName,
+                    createdAt: Date.now()
+                };
+
+                // 3. SAVE TO DB
+                await set(ref(window.db, `exercise_meta/${normalizedName}`), finalData);
+                console.log(`[Meta] Saved new analysis for ${exerciseName} using ${modelName}`);
+                
+                return finalData;
+
+            } catch (error) {
+                console.error(`[Meta] Error processing ${exerciseName}:`, error);
+                return null;
+            }
+        };
     </script>
 
     <!-- Tailwind Config -->
@@ -65,7 +185,7 @@
                 extend: {
                     colors: {
                         // Modern Palette
-                        bg: '#09090b',      // Zinc 950
+                        bg: '#09090b',       // Zinc 950
                         surface: '#18181b', // Zinc 900
                         surfaceLight: '#27272a', // Zinc 800
                         primary: '#a855f7', // Purple
@@ -117,6 +237,8 @@
 
         .fade-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(20px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        
+        .progress-bar-fill { transition: width 1s cubic-bezier(0.4, 0, 0.2, 1); }
     </style>
 </head>
 <body>
@@ -127,6 +249,7 @@
 
         // HELPER: Normalize strings to Uppercase for consistency
         const normalize = (str) => str ? str.trim().toUpperCase() : "";
+        const normalizeKey = (str) => str ? str.trim().toUpperCase().replace(/[.#$/[\]]/g, '_') : "";
 
         const getTodayDateString = () => {
             const date = new Date();
@@ -353,8 +476,8 @@
                                     </svg>
                                 ) : (
                                     <div className="flex flex-col items-center justify-center h-full text-textMuted opacity-50">
-                                        <i className="ph-duotone ph-chart-line-up text-4xl mb-2"></i>
-                                        <span className="text-xs">No data available</span>
+                                            <i className="ph-duotone ph-chart-line-up text-4xl mb-2"></i>
+                                            <span className="text-xs">No data available</span>
                                     </div>
                                 )}
                             </div>
@@ -501,7 +624,21 @@
                 updateExercise(exIndex, { ...exercise, sets: newSets });
             };
             const removeSet = (sIndex) => updateExercise(exIndex, { ...exercise, sets: exercise.sets.filter((_, i) => i !== sIndex) });
-            const handleNameSelect = (name) => { updateExercise(exIndex, { ...exercise, name: name }); setShowSuggestions(false); };
+            
+            const handleNameSelect = (name) => { 
+                updateExercise(exIndex, { ...exercise, name: name }); 
+                setShowSuggestions(false); 
+                // Trigger Gemini Meta Check logic here immediately
+                if(window.ensureExerciseMeta) window.ensureExerciseMeta(name);
+            };
+
+            // Trigger meta check on blur
+            const handleBlurName = () => {
+                setTimeout(() => setShowSuggestions(false), 200);
+                if(exercise.name && window.ensureExerciseMeta) {
+                     window.ensureExerciseMeta(exercise.name);
+                }
+            };
 
             if (!isExpanded) {
                 return (
@@ -533,7 +670,7 @@
                                 value={exercise.name}
                                 onChange={(e) => { updateExercise(exIndex, {...exercise, name: e.target.value.toUpperCase()}); setShowSuggestions(true); }}
                                 onFocus={() => setShowSuggestions(true)}
-                                onBlur={() => setTimeout(() => setShowSuggestions(false), 200)} 
+                                onBlur={handleBlurName} 
                                 className="w-full bg-transparent text-2xl font-bold text-textMain placeholder-textMuted/30 border-none p-0 focus:ring-0 leading-none uppercase"
                                 placeholder="NAME..."
                                 autoComplete="off"
@@ -1063,10 +1200,91 @@
             );
         };
 
-        // 5. CATALOG WIDGET (LIBRARY) (No Changes)
-        const Catalog = ({ historyData }) => {
+        // --- NEW WIDGET: PRWidget ---
+        const PRWidget = ({ historyData }) => {
+            const [selectedUser, setSelectedUser] = useState('raghendh');
+            const [searchTerm, setSearchTerm] = useState("");
+
+            const prs = useMemo(() => {
+                if (!historyData) return [];
+                const records = {}; // { "BENCH PRESS": 100 }
+
+                Object.values(historyData).forEach(day => {
+                    const uData = day[selectedUser];
+                    if (uData?.exercises) {
+                        uData.exercises.forEach(ex => {
+                            if (!ex.name) return;
+                            const name = normalize(ex.name);
+                            const maxWeightInSession = ex.sets ? Math.max(...ex.sets.map(s => parseFloat(s.weight) || 0)) : 0;
+                            
+                            if (!records[name] || maxWeightInSession > records[name]) {
+                                records[name] = maxWeightInSession;
+                            }
+                        });
+                    }
+                });
+
+                return Object.entries(records)
+                    .map(([name, weight]) => ({ name, weight }))
+                    .sort((a, b) => b.weight - a.weight); 
+            }, [historyData, selectedUser]);
+
+            const filteredPRs = prs.filter(p => p.name.includes(normalize(searchTerm)));
+
+            return (
+                <div className="pb-24 pt-2 fade-in px-2">
+                    <h2 className="text-xl font-bold text-textMain mb-4">Personal Records</h2>
+                    
+                    {/* User Toggle */}
+                    <div className="flex bg-surface rounded-xl p-1 border border-border mb-4">
+                        {['raghendh', 'devanandh'].map(u => (
+                            <button 
+                                key={u} 
+                                onClick={() => setSelectedUser(u)}
+                                className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase transition-all ${selectedUser === u ? 'bg-textMain text-bg shadow-md' : 'text-textMuted'}`}
+                            >
+                                {u}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Search */}
+                    <div className="glass-panel rounded-xl p-2 mb-4 flex items-center gap-2">
+                        <i className="ph-bold ph-magnifying-glass text-textMuted pl-2"></i>
+                        <input 
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="Search exercise..."
+                            className="bg-transparent border-none w-full text-sm text-textMain placeholder-textMuted focus:ring-0"
+                        />
+                    </div>
+
+                    {/* List */}
+                    <div className="space-y-2">
+                        {filteredPRs.map((pr, i) => (
+                            <div key={i} className="glass-panel rounded-xl p-4 flex justify-between items-center">
+                                <span className="font-bold text-textMain uppercase text-sm">{pr.name}</span>
+                                <div className="flex items-baseline gap-1">
+                                    <span className="text-2xl font-teko font-bold text-primary">{pr.weight}</span>
+                                    <span className="text-xs text-textMuted">KG</span>
+                                </div>
+                            </div>
+                        ))}
+                        {filteredPRs.length === 0 && (
+                            <div className="text-center text-textMuted text-xs py-8">No records found.</div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        // 5. CATALOG WIDGET (LIBRARY) - Updated
+        const Catalog = ({ historyData, metaData }) => {
             const [selectedSplit, setSelectedSplit] = useState("Push");
+            const [expandedExercise, setExpandedExercise] = useState(null); // New State
+            const [analyzing, setAnalyzing] = useState(null); // Track analyzing state
             const splits = ["Push", "Pull", "Legs", "Upper", "Lower", "Full Body", "Cardio", "Arms", "Abs"];
+            
             const exercises = useMemo(() => {
                 const uniqueSet = new Set();
                 const displayList = [];
@@ -1093,6 +1311,12 @@
                 return displayList.sort();
             }, [historyData, selectedSplit]);
 
+            const handleAnalyze = async (name, force = false) => {
+                setAnalyzing(name);
+                await window.ensureExerciseMeta(name, force);
+                setAnalyzing(null);
+            };
+
             return (
                 <div className="pb-24 pt-2 fade-in">
                     <h2 className="text-xl font-bold text-textMain mb-4 px-2">Exercise Catalog</h2>
@@ -1112,16 +1336,239 @@
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 divide-y divide-white/5">
-                                {exercises.map((ex, i) => (
-                                    <div key={i} className="p-4 flex items-center gap-4 hover:bg-white/5 transition-colors first:rounded-t-3xl last:rounded-b-3xl">
-                                        <div className="w-8 h-8 rounded-lg bg-surface flex items-center justify-center text-primary">
-                                            <i className="ph-fill ph-check-circle"></i>
+                                {exercises.map((ex, i) => {
+                                    const isExpanded = expandedExercise === ex;
+                                    const meta = metaData ? metaData[normalizeKey(ex)] : null;
+                                    const isBusy = analyzing === ex;
+
+                                    return (
+                                        <div key={i} className="flex flex-col transition-colors first:rounded-t-3xl last:rounded-b-3xl">
+                                            <div 
+                                                onClick={() => setExpandedExercise(isExpanded ? null : ex)}
+                                                className="p-4 flex items-center gap-4 hover:bg-white/5 cursor-pointer"
+                                            >
+                                                <div className="w-8 h-8 rounded-lg bg-surface flex items-center justify-center text-primary">
+                                                    <i className="ph-fill ph-check-circle"></i>
+                                                </div>
+                                                <span className="text-sm font-medium text-textMain uppercase flex-1">{ex}</span>
+                                                <i className={`ph-bold ph-caret-down text-textMuted transition-transform ${isExpanded ? 'rotate-180' : ''}`}></i>
+                                            </div>
+
+                                            {isExpanded && (
+                                                <div className="px-4 pb-4 pl-16">
+                                                    {meta ? (
+                                                        <div className="text-xs text-textMuted space-y-2">
+                                                            <p className="italic border-l-2 border-white/10 pl-2">{meta.description}</p>
+                                                            <div className="space-y-1">
+                                                                {Object.entries(meta.muscles || {}).sort((a,b)=>b[1]-a[1]).map(([m, val]) => (
+                                                                    <div key={m} className="flex items-center gap-2">
+                                                                        <span className="w-16">{m}</span>
+                                                                        <div className="flex-1 h-1.5 bg-surface rounded-full overflow-hidden">
+                                                                            <div className="h-full bg-primary" style={{width: `${val*100}%`}}></div>
+                                                                        </div>
+                                                                        <span className="w-8 text-right">{(val*100).toFixed(0)}%</span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                            <button 
+                                                                onClick={() => handleAnalyze(ex, true)}
+                                                                disabled={isBusy}
+                                                                className="mt-2 text-[10px] flex items-center gap-1 text-textMuted hover:text-white transition-colors disabled:opacity-50"
+                                                            >
+                                                                <i className={`ph-bold ${isBusy ? 'ph-spinner animate-spin' : 'ph-arrows-clockwise'}`}></i>
+                                                                {isBusy ? 'Analyzing...' : 'Regenerate Analysis'}
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex flex-col items-start gap-2">
+                                                            <div className="text-xs text-textMuted italic">No biomechanics data available.</div>
+                                                            <button 
+                                                                onClick={() => handleAnalyze(ex, true)}
+                                                                disabled={isBusy}
+                                                                className="px-3 py-1.5 rounded-lg bg-surface border border-white/10 text-xs font-bold text-textMain hover:bg-white/5 flex items-center gap-2 disabled:opacity-50"
+                                                            >
+                                                                <i className={`ph-bold ${isBusy ? 'ph-spinner animate-spin' : 'ph-sparkle text-primary'}`}></i>
+                                                                {isBusy ? 'Analyzing...' : 'Analyze with AI'}
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
-                                        <span className="text-sm font-medium text-textMain uppercase">{ex}</span>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         )}
+                    </div>
+                </div>
+            );
+        };
+
+        // NEW: MUSCLE ANALYSIS WIDGET - Updated
+        const MuscleAnalysis = ({ historyData, metaData }) => {
+            const [selectedUser, setSelectedUser] = useState('raghendh');
+            const [timeframe, setTimeframe] = useState('all'); // 'all', 'month', 'week'
+            const [expandedMuscle, setExpandedMuscle] = useState(null); // New State
+
+            // Standard Muscles List for ordering
+            const MUSCLE_GROUPS = [
+                "Upper Chest", "Lower Chest", "Pecs", "Inner Chest", "Outer Chest",
+                "Lats", "Traps", "Mid-Back", "Lower Back",
+                "Quads", "Hamstrings", "Glutes", "Calves", "Inner Thighs",
+                "Front Delts", "Side Delts", "Rear Delts",
+                "Biceps", "Triceps", "Forearms",
+                "Abs", "Lower Abs", "Obliques", "Serratus"
+            ];
+
+            const { stats, topExercises } = useMemo(() => {
+                if (!historyData || !metaData) return { stats: [], topExercises: {} };
+                
+                const scores = {};
+                const exerciseBreakdown = {}; // { 'Chest': { 'Bench': 5, 'Fly': 2 } }
+
+                MUSCLE_GROUPS.forEach(m => {
+                    scores[m] = 0;
+                    exerciseBreakdown[m] = {};
+                });
+
+                const now = new Date();
+                const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+                Object.entries(historyData).forEach(([date, dayData]) => {
+                    // Timeframe filter
+                    const d = new Date(date);
+                    if (timeframe === 'week' && d < oneWeekAgo) return;
+                    if (timeframe === 'month' && d < oneMonthAgo) return;
+
+                    const uData = dayData[selectedUser];
+                    if (uData?.exercises) {
+                        uData.exercises.forEach(ex => {
+                            if (!ex.name) return;
+                            const name = normalize(ex.name);
+                            const normalizedKey = normalizeKey(ex.name);
+                            const meta = metaData[normalizedKey];
+                            
+                            // Calculate Volume: Just Sets for simplicity in hypertrophy context
+                            // We distribute the set count based on muscle contribution
+                            const sets = ex.sets ? ex.sets.length : 0;
+                            
+                            if (meta && meta.muscles) {
+                                Object.entries(meta.muscles).forEach(([muscle, contribution]) => {
+                                    // Normalize muscle name key just in case Gemini output slightly varies case
+                                    if (scores[muscle] !== undefined) {
+                                        const vol = sets * parseFloat(contribution);
+                                        scores[muscle] += vol;
+
+                                        if (!exerciseBreakdown[muscle][name]) exerciseBreakdown[muscle][name] = 0;
+                                        exerciseBreakdown[muscle][name] += vol;
+                                    }
+                                });
+                            }
+                        });
+                    }
+                });
+
+                // Convert to array and sort
+                const maxVal = Math.max(...Object.values(scores), 1); // Avoid div by zero
+                const processedStats = MUSCLE_GROUPS.map(m => ({
+                    name: m,
+                    value: scores[m],
+                    percent: (scores[m] / maxVal) * 100
+                })).sort((a,b) => b.value - a.value);
+
+                // Process top exercises
+                const processedTop = {};
+                MUSCLE_GROUPS.forEach(m => {
+                    processedTop[m] = Object.entries(exerciseBreakdown[m])
+                        .map(([name, val]) => ({ name, value: val }))
+                        .sort((a,b) => b.value - a.value)
+                        .slice(0, 3);
+                });
+
+                return { stats: processedStats, topExercises: processedTop };
+
+            }, [historyData, metaData, selectedUser, timeframe]);
+
+            return (
+                <div className="pb-24 pt-2 fade-in px-2">
+                    <h2 className="text-xl font-bold text-textMain mb-4">Muscle Analysis</h2>
+                    
+                    {/* Controls */}
+                    <div className="flex gap-4 mb-6">
+                        <div className="flex bg-surface rounded-xl p-1 border border-border flex-1">
+                            {['raghendh', 'devanandh'].map(u => (
+                                <button 
+                                    key={u}
+                                    onClick={() => setSelectedUser(u)}
+                                    className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all ${selectedUser === u ? 'bg-textMain text-bg shadow-md' : 'text-textMuted'}`}
+                                >
+                                    {u.substring(0,4)}
+                                </button>
+                            ))}
+                        </div>
+                        <div className="flex bg-surface rounded-xl p-1 border border-border flex-1">
+                            {['week', 'month', 'all'].map(t => (
+                                <button 
+                                    key={t}
+                                    onClick={() => setTimeframe(t)}
+                                    className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all ${timeframe === t ? 'bg-primary text-white shadow-neon-purple' : 'text-textMuted'}`}
+                                >
+                                    {t}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Chart */}
+                    <div className="glass-panel rounded-3xl p-5 space-y-4">
+                        {stats.map((s, i) => (
+                            s.value > 0 && (
+                                <div key={s.name} className="transition-all">
+                                    <div 
+                                        className="cursor-pointer"
+                                        onClick={() => setExpandedMuscle(expandedMuscle === s.name ? null : s.name)}
+                                    >
+                                        <div className="flex justify-between text-xs font-bold text-textMuted mb-1 uppercase tracking-wider">
+                                            <span className="flex items-center gap-1">
+                                                {s.name}
+                                                <i className={`ph-bold ph-caret-down transition-transform ${expandedMuscle === s.name ? 'rotate-180' : ''}`}></i>
+                                            </span>
+                                            <span className="text-textMain">{s.value.toFixed(1)} Sets</span>
+                                        </div>
+                                        <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                                            <div 
+                                                className="h-full bg-gradient-to-r from-primary to-secondary rounded-full progress-bar-fill"
+                                                style={{ width: `${s.percent}%` }}
+                                            ></div>
+                                        </div>
+                                    </div>
+
+                                    {expandedMuscle === s.name && (
+                                        <div className="mt-3 pl-2 border-l-2 border-white/10 space-y-2 fade-in">
+                                            <p className="text-[10px] text-textMuted uppercase tracking-widest mb-1">Top Contributors</p>
+                                            {topExercises[s.name].map((ex, idx) => (
+                                                <div key={idx} className="flex justify-between items-center text-xs">
+                                                    <span className="text-textMain truncate pr-2 w-3/4">{ex.name}</span>
+                                                    <span className="text-textMuted font-mono">{ex.value.toFixed(1)}</span>
+                                                </div>
+                                            ))}
+                                            {topExercises[s.name].length === 0 && <span className="text-[10px] text-textMuted">No exercises recorded.</span>}
+                                        </div>
+                                    )}
+                                </div>
+                            )
+                        ))}
+                        {stats.every(s => s.value === 0) && (
+                            <div className="text-center text-textMuted text-sm py-10 opacity-50">
+                                <i className="ph-duotone ph-person-simple-throw text-4xl mb-2"></i>
+                                <p>No data analyzed yet.</p>
+                            </div>
+                        )}
+                    </div>
+                    
+                    <div className="mt-4 text-[10px] text-textMuted text-center opacity-50 px-8">
+                        * Analysis based on AI-generated biomechanics data. Volume is distributed based on muscle involvement ratios.
                     </div>
                 </div>
             );
@@ -1362,225 +1809,6 @@
             );
         };
 
-        // NEW: PR WIDGET
-        const PRWidget = ({ historyData }) => {
-            const [selectedExercise, setSelectedExercise] = useState(null);
-            const [chartUser, setChartUser] = useState('raghendh'); // Toggle for chart
-
-            const prData = useMemo(() => {
-                if (!historyData) return {};
-                const exercises = {};
-                // Iterate all history
-                Object.entries(historyData).forEach(([date, dayData]) => {
-                    // Filter valid dates
-                    if (!date.match(/^\d{4}-\d{2}-\d{2}$/)) return;
-                    
-                    ['raghendh', 'devanandh'].forEach(u => {
-                        const uData = dayData[u];
-                        if (uData?.exercises) {
-                            uData.exercises.forEach(ex => {
-                                if (!ex.name) return;
-                                const name = normalize(ex.name);
-                                // Find max weight in this session
-                                let maxWeight = 0;
-                                if (ex.sets) {
-                                    ex.sets.forEach(s => {
-                                        const w = parseFloat(s.weight);
-                                        if (!isNaN(w) && w > maxWeight) maxWeight = w;
-                                    });
-                                }
-                                
-                                if (maxWeight > 0) {
-                                    if (!exercises[name]) exercises[name] = { raghendh: 0, devanandh: 0 };
-                                    // Update All-time PR
-                                    if (maxWeight > exercises[name][u]) {
-                                        exercises[name][u] = maxWeight;
-                                    }
-                                }
-                            });
-                        }
-                    });
-                });
-                return exercises;
-            }, [historyData]);
-
-            const sortedExercises = useMemo(() => {
-                const priority = ["DEADLIFT", "BENCH PRESS", "SQUATS", "MACHINE DEADLIFT"]; 
-                const list = Object.keys(prData).filter(ex => {
-                    return prData[ex].raghendh > 0 || prData[ex].devanandh > 0;
-                });
-                
-                return list.sort((a, b) => {
-                    const idxA = priority.indexOf(a);
-                    const idxB = priority.indexOf(b);
-                    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-                    if (idxA !== -1) return -1;
-                    if (idxB !== -1) return 1;
-                    return a.localeCompare(b);
-                });
-            }, [prData]);
-
-            // Generate Graph Data for a specific exercise and user
-            const getGraphData = (exerciseName, user) => {
-                if (!historyData || !exerciseName) return [];
-                const points = [];
-                let currentPR = 0;
-                
-                // Sort dates chronologically
-                const dates = Object.keys(historyData).filter(k => k.match(/^\d{4}-\d{2}-\d{2}$/)).sort();
-                
-                dates.forEach(date => {
-                    const dayData = historyData[date];
-                    const uData = dayData[user];
-                    let dayMax = 0;
-                    let performed = false;
-
-                    if (uData?.exercises) {
-                        uData.exercises.forEach(ex => {
-                            if (normalize(ex.name) === exerciseName) {
-                                performed = true;
-                                if (ex.sets) {
-                                    ex.sets.forEach(s => {
-                                        const w = parseFloat(s.weight);
-                                        if (!isNaN(w) && w > dayMax) dayMax = w;
-                                    });
-                                }
-                            }
-                        });
-                    }
-
-                    if (performed) {
-                        if (dayMax > currentPR) currentPR = dayMax;
-                        // Add point. PRs are cumulative, they don't go down.
-                        if (currentPR > 0) {
-                             points.push({ date, value: currentPR });
-                        }
-                    }
-                });
-                return points;
-            };
-
-            return (
-                <div className="pb-24 pt-2 fade-in">
-                    <h2 className="text-xl font-bold text-textMain mb-4 px-2">Personal Records</h2>
-                    <div className="space-y-3">
-                        {sortedExercises.map(ex => (
-                            <div 
-                                key={ex} 
-                                onClick={() => setSelectedExercise(ex)}
-                                className="glass-panel rounded-2xl p-4 flex justify-between items-center cursor-pointer hover:bg-white/5 transition-colors"
-                            >
-                                <div className="flex-1">
-                                    <h3 className="font-bold text-textMain uppercase mb-2">{ex}</h3>
-                                    <div className="flex gap-4">
-                                        <div className="text-xs">
-                                            <span className="text-primary font-bold mr-1">RAGH</span>
-                                            <span className="text-textMain font-mono text-sm">{prData[ex].raghendh || '-'}</span>
-                                            <span className="text-[10px] text-textMuted ml-0.5">KG</span>
-                                        </div>
-                                        <div className="text-xs">
-                                            <span className="text-secondary font-bold mr-1">DEV</span>
-                                            <span className="text-textMain font-mono text-sm">{prData[ex].devanandh || '-'}</span>
-                                            <span className="text-[10px] text-textMuted ml-0.5">KG</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <i className="ph-bold ph-chart-line-up text-textMuted"></i>
-                            </div>
-                        ))}
-                    </div>
-
-                    {selectedExercise && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl fade-in">
-                             <div className="w-full max-w-sm relative">
-                                <div className="bg-surface/50 border border-white/10 rounded-[2rem] p-6 relative shadow-2xl overflow-hidden backdrop-blur-md">
-                                    <button onClick={() => setSelectedExercise(null)} className="absolute top-4 right-4 text-textMuted hover:text-white z-20">
-                                        <i className="ph-bold ph-x text-xl"></i>
-                                    </button>
-                                    
-                                    <h3 className="text-2xl font-teko font-bold text-textMain text-center uppercase mb-1">{selectedExercise}</h3>
-                                    <p className="text-xs text-textMuted text-center uppercase tracking-widest mb-6">PR Progression</p>
-
-                                    {/* User Toggle */}
-                                    <div className="flex bg-black/40 rounded-xl p-1 mb-6">
-                                        <button onClick={() => setChartUser('raghendh')} className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase transition-all ${chartUser === 'raghendh' ? 'bg-primary text-white shadow-lg' : 'text-textMuted'}`}>Ragh</button>
-                                        <button onClick={() => setChartUser('devanandh')} className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase transition-all ${chartUser === 'devanandh' ? 'bg-secondary text-white shadow-lg' : 'text-textMuted'}`}>Dev</button>
-                                    </div>
-
-                                    {/* We reuse ProgressChart but we need to render it slightly differently since ProgressChart is a modal itself. 
-                                        Actually, let's just use the logic from ProgressChart but render it inline. 
-                                        Wait, simpler: Just call ProgressChart and let it take over, but pass a custom onClose?
-                                        No, the styles clash (double modal). 
-                                        I will create a simplified inline version of the chart here.
-                                    */}
-                                    <div className="relative">
-                                        <ProgressChart 
-                                            data={getGraphData(selectedExercise, chartUser)} 
-                                            color={chartUser === 'raghendh' ? 'text-primary' : 'text-secondary'} 
-                                            type="PR"
-                                            // Pass a no-op onClose so it doesn't render its own close button logic if we were embedding it, 
-                                            // BUT ProgressChart renders a 'fixed inset-0' div. This is a problem.
-                                            // I will hack it: I will unmount this modal and mount the ProgressChart modal instead?
-                                            // No, I want the toggle.
-                                            // Solution: Modify ProgressChart to accept a className prop to override 'fixed inset-0'?
-                                            // Too risky "do not change anything else".
-                                            // Alternative: I will extract the SVG drawing logic? No, too much code.
-                                            // Best approach within constraints:
-                                            // The user asked "shows an increase in the PR in graph SAME as that of weight".
-                                            // Weight uses ProgressChart.
-                                            // So I will render ProgressChart, but I will put the TOGGLE inside the `type` prop? No.
-                                            // I will render my custom modal, and inside it I will render the SVG manually? 
-                                            // Or I will cheat: I will hide the modal container of ProgressChart via CSS if I pass a specific prop?
-                                            // Let's just create a new InlineChart component that is a copy of ProgressChart inner logic but without the modal wrapper.
-                                            // Actually, I'll just use ProgressChart and accept the double backdrop or slightly weird UI, it's safer than breaking logic.
-                                            // Wait! I can just render the Chart logic here since I have the code in front of me.
-                                        />
-                                        {/* Since I can't easily modify ProgressChart without risk, I will rely on the fact that ProgressChart renders a Modal.
-                                            So, when I select an exercise, I won't render MY modal. I will render ProgressChart directly.
-                                            But where do I put the User Toggle?
-                                            I'll put the User Toggle in the `PRWidget` list? No.
-                                            I'll put the User Toggle ABOVE the ProgressChart?
-                                            If ProgressChart is fixed z-50, I need a z-60 toggle?
-                                            Okay, plan:
-                                            1. When card clicked, set selectedExercise.
-                                            2. Render a Z-60 div with the Toggle at the top center of the screen.
-                                            3. Render the ProgressChart underneath.
-                                        */}
-                                    </div>
-                                </div>
-                             </div>
-                        </div>
-                    )}
-                    
-                    {/* The Hacky implementation of the Chart with Toggle */}
-                    {selectedExercise && (
-                        <div style={{display: 'none'}}> 
-                            {/* This is just to satisfy the compiler/logic flow if I were using the component directly. 
-                                Actually, I'll implement the "Z-60 Toggle + ProgressChart" approach. */}
-                        </div>
-                    )}
-                    
-                    {selectedExercise && (
-                        <>
-                            {/* Custom Toggle Overlay */}
-                            <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[60] flex bg-surface/90 backdrop-blur-md rounded-xl p-1 border border-white/10 shadow-2xl animate-bounce">
-                                <button onClick={() => setChartUser('raghendh')} className={`px-4 py-2 rounded-lg text-xs font-bold uppercase transition-all ${chartUser === 'raghendh' ? 'bg-primary text-white shadow-neon-purple' : 'text-textMuted'}`}>Ragh</button>
-                                <button onClick={() => setChartUser('devanandh')} className={`px-4 py-2 rounded-lg text-xs font-bold uppercase transition-all ${chartUser === 'devanandh' ? 'bg-secondary text-white shadow-neon-green' : 'text-textMuted'}`}>Dev</button>
-                            </div>
-                            
-                            <ProgressChart 
-                                data={getGraphData(selectedExercise, chartUser)} 
-                                color={chartUser === 'raghendh' ? 'text-primary' : 'text-secondary'} 
-                                type={`${selectedExercise} PR`}
-                                onClose={() => setSelectedExercise(null)} 
-                            />
-                        </>
-                    )}
-                </div>
-            )
-        }
-
-
         // --- APP LAYOUT ---
         const Layout = () => {
             const [view, setView] = useState("main"); // main, profiles, profile-detail
@@ -1590,14 +1818,53 @@
             const [isAuth, setIsAuth] = useState(false);
             const [authError, setAuthError] = useState(null);
             const [allHistory, setAllHistory] = useState(null);
+            const [metaData, setMetaData] = useState({});
 
+            // MODIFIED: Polling mechanism to ensure window.auth is ready before use
             useEffect(() => {
-                if(!window.auth) return;
-                const unsub = window.auth.onAuthStateChanged((user) => {
-                    if (user) { setIsAuth(true); window.onValue(window.ref(window.db, '/'), (snapshot) => setAllHistory(snapshot.val())); } 
-                    else { window.signInAnonymously(window.auth).catch(err => setAuthError(err)); }
-                });
-                return () => unsub();
+                let unsubscribeAuth = null;
+
+                const initApp = () => {
+                    if (window.auth && window.db) {
+                        unsubscribeAuth = window.auth.onAuthStateChanged((user) => {
+                            if (user) { 
+                                setIsAuth(true); 
+                                // Fetch History
+                                window.onValue(window.ref(window.db, '/'), (snapshot) => {
+                                    if (snapshot.exists()) {
+                                        const val = snapshot.val();
+                                        setAllHistory(val);
+                                        // Also grab the exercise_meta part separately if it was part of root
+                                        if (val.exercise_meta) setMetaData(val.exercise_meta);
+                                    }
+                                });
+                                // Explicit Listener for Metadata updates
+                                window.onValue(window.ref(window.db, 'exercise_meta'), (snapshot) => {
+                                    if (snapshot.exists()) setMetaData(snapshot.val());
+                                });
+                            } 
+                            else { window.signInAnonymously(window.auth).catch(err => setAuthError(err)); }
+                        });
+                        return true;
+                    }
+                    return false;
+                };
+
+                // Check immediately, then poll if not ready
+                if (!initApp()) {
+                    const interval = setInterval(() => {
+                        if (initApp()) clearInterval(interval);
+                    }, 100);
+                    
+                    return () => {
+                        clearInterval(interval);
+                        if (unsubscribeAuth) unsubscribeAuth();
+                    };
+                }
+                
+                return () => {
+                    if (unsubscribeAuth) unsubscribeAuth();
+                };
             }, []);
 
             if (authError) return <SetupScreen error={authError} />;
@@ -1668,7 +1935,8 @@
                                 {tab === 'devanandh' && <Dashboard userKey="devanandh" allHistory={allHistory} colorTheme={themes.devanandh} />}
                                 {tab === 'history' && <Timeline historyData={allHistory} />}
                                 {tab === 'pr' && <PRWidget historyData={allHistory} />}
-                                {tab === 'library' && <Catalog historyData={allHistory} />}
+                                {tab === 'library' && <Catalog historyData={allHistory} metaData={metaData} />}
+                                {tab === 'anatomy' && <MuscleAnalysis historyData={allHistory} metaData={metaData} />}
                             </div>
                         )}
 
@@ -1695,7 +1963,8 @@
                                     { id: 'devanandh', icon: 'ph-sneaker-move', activeColor: 'bg-secondary text-white shadow-neon-green' },
                                     { id: 'history', icon: 'ph-clock-counter-clockwise', activeColor: 'bg-textMain text-bg' },
                                     { id: 'pr', icon: 'ph-trophy', activeColor: 'bg-textMain text-bg' },
-                                    { id: 'library', icon: 'ph-books', activeColor: 'bg-textMain text-bg' }
+                                    { id: 'library', icon: 'ph-books', activeColor: 'bg-textMain text-bg' },
+                                    { id: 'anatomy', icon: 'ph-person-arms-spread', activeColor: 'bg-textMain text-bg' }
                                 ].map(item => {
                                     const isActive = tab === item.id;
                                     return (
