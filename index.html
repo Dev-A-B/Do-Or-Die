@@ -499,12 +499,35 @@
             </div>
         );
 
-        // 1. MODERN WIDGET STOPWATCH (No changes)
-        const StopwatchWidget = ({ label, colorClass, shadowClass }) => {
+        // 1. MODERN WIDGET STOPWATCH (Updated for Scroll Transition)
+        const StopwatchWidget = ({ label, colorClass, shadowClass, progress = 0 }) => {
             const [time, setTime] = useState(0);
             const [isRunning, setIsRunning] = useState(false);
             const timerRef = useRef(null);
             const bgClass = colorClass.replace('text-', 'bg-');
+
+            // --- Interpolation Helpers ---
+            // Maps progress (0 to 1) to a value between start and end
+            const lerp = (start, end, p) => start + (end - start) * p;
+
+            // Dimensions/Sizes calculations based on scroll progress
+            // Height: 11rem (176px) -> 5rem (80px)
+            const heightRem = lerp(11, 5, progress);
+            
+            // Time Font Size: 4.5rem -> 2.5rem
+            const timeSizeRem = lerp(4.5, 2.5, progress);
+            
+            // Label Font Size: 3rem -> 1.5rem
+            const labelSizeClass = progress > 0.5 ? 'text-xl' : 'text-5xl';
+            const labelSizeRem = lerp(3, 1.25, progress); // Using rem for smoother transition
+
+            // Padding: 1.25rem (p-5) -> 0.75rem (p-3)
+            const paddingRem = lerp(1.25, 0.75, progress);
+
+            // Opacity for secondary elements (milliseconds, blur bg)
+            // Fade out quickly in the first 50% of scroll
+            const subElementOpacity = Math.max(0, 1 - (progress * 2.5));
+
 
             const toggle = () => {
                 if (isRunning) {
@@ -532,25 +555,50 @@
             return (
                 <div 
                     onClick={toggle} 
-                    className={`relative flex-1 rounded-[2rem] p-5 cursor-pointer overflow-hidden transition-all duration-300 active:scale-95 border h-44 flex flex-col justify-between group
+                    className={`relative flex-1 rounded-[2rem] cursor-pointer overflow-hidden transition-transform duration-300 active:scale-95 border flex flex-col justify-between group
                     ${isRunning ? `${bgClass} border-transparent shadow-lg scale-[1.02]` : `border-white/5 ${shadowClass}`}`}
-                    style={{ background: isRunning ? undefined : 'linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0) 100%)' }}
+                    style={{ 
+                        background: isRunning ? undefined : 'linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0) 100%)',
+                        height: `${heightRem}rem`,
+                        padding: `${paddingRem}rem`,
+                        transition: 'height 0.1s linear, padding 0.1s linear'
+                    }}
                 >
-                    {!isRunning && <div className={`absolute -right-6 -top-6 w-28 h-28 rounded-full blur-3xl opacity-20 ${bgClass}`}></div>}
-                    <div className="relative z-10 mt-1">
-                        <span className={`font-teko text-5xl font-bold tracking-wide uppercase leading-none block transition-colors ${isRunning ? 'text-bg mix-blend-screen' : `${colorClass} opacity-90`}`}>
+                    {!isRunning && (
+                        <div 
+                            className={`absolute -right-6 -top-6 w-28 h-28 rounded-full blur-3xl opacity-20 ${bgClass}`}
+                            style={{ opacity: 0.2 * subElementOpacity }}
+                        ></div>
+                    )}
+                    
+                    <div className="relative z-10 mt-1" style={{ lineHeight: 1 }}>
+                        <span 
+                            className={`font-teko font-bold tracking-wide uppercase block transition-colors ${isRunning ? 'text-bg mix-blend-screen' : `${colorClass} opacity-90`}`}
+                            style={{ fontSize: `${labelSizeRem}rem`, transition: 'font-size 0.1s linear' }}
+                        >
                             {label}
                         </span>
                     </div>
+                    
                     <div className="flex items-baseline gap-0.5 relative z-10 mb-1">
-                        <span className={`font-teko text-[4.5rem] font-semibold leading-[0.75] tracking-tight transition-colors ${isRunning ? 'text-white' : 'text-textMain'}`}>
+                        <span 
+                            className={`font-teko font-semibold leading-[0.75] tracking-tight transition-colors ${isRunning ? 'text-white' : 'text-textMain'}`}
+                            style={{ fontSize: `${timeSizeRem}rem`, transition: 'font-size 0.1s linear' }}
+                        >
                             {mins}:{secs}
                         </span>
-                        <span className={`font-teko text-4xl font-light w-8 transition-colors ${isRunning ? 'text-white/60' : 'text-textMuted'}`}>
+                        <span 
+                            className={`font-teko text-4xl font-light w-8 transition-colors ${isRunning ? 'text-white/60' : 'text-textMuted'}`}
+                            style={{ opacity: subElementOpacity, transition: 'opacity 0.1s linear' }}
+                        >
                             {decis}
                         </span>
                     </div>
-                    <div className={`absolute bottom-5 right-5 w-2 h-2 rounded-full transition-colors duration-300 ${isRunning ? 'bg-white animate-pulse' : 'bg-white/10'}`}></div>
+                    
+                    <div 
+                        className={`absolute bottom-5 right-5 w-2 h-2 rounded-full transition-colors duration-300 ${isRunning ? 'bg-white animate-pulse' : 'bg-white/10'}`}
+                        style={{ opacity: subElementOpacity }}
+                    ></div>
                 </div>
             );
         };
@@ -1420,6 +1468,14 @@
                 "Abs", "Lower Abs", "Obliques", "Serratus"
             ];
 
+            // Difficulty Factor Map (D)
+            const DIFFICULTY = {
+                "LATERAL RAISE": 1.15,
+                "BENCH PRESS": 1.00,
+                "LEG PRESS": 0.85,
+                "HIP THRUST": 0.95
+            };
+
             const { stats, topExercises } = useMemo(() => {
                 if (!historyData || !metaData) return { stats: [], topExercises: {} };
                 
@@ -1435,6 +1491,20 @@
                 const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
                 const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
+                // Helper: Estimate 1RM
+                const estimate1RM = (weight, reps) => {
+                    return weight * (1 + reps / 30);
+                };
+
+                // Helper: Calculate Load Factor
+                const getLoadFactor = (weight, reps) => {
+                    if (!weight || !reps) return 0.75; // safe fallback
+                    const est1RM = estimate1RM(weight, reps);
+                    const lf = weight / est1RM;
+                    // clamp to sane physiological range
+                    return Math.max(0.60, Math.min(1.00, lf));
+                };
+
                 Object.entries(historyData).forEach(([date, dayData]) => {
                     // Timeframe filter
                     const d = new Date(date);
@@ -1449,44 +1519,45 @@
                             const normalizedKey = normalizeKey(ex.name);
                             const meta = metaData[normalizedKey];
                             
-                            // UPDATED LOGIC HERE
-                            let exerciseStimulus = 0;
+                            // EMS CALCULATION LOGIC
+                            
+                            // D: Difficulty Factor
+                            const D = DIFFICULTY[name] || 1.0;
+
+                            let totalExerciseStimulus = 0;
 
                             (ex.sets || []).forEach(s => {
                               const reps = parseInt(s.reps);
+                              const weight = parseFloat(s.weight) || 0;
                               if (!reps) return;
 
-                              // ---- Effort factor (no RPE yet) ----
-                              let effort;
-                              if (reps <= 5) effort = 1.0;
-                              else if (reps <= 8) effort = 0.95;
-                              else if (reps <= 12) effort = 0.85;
-                              else if (reps <= 20) effort = 0.70;
-                              else effort = 0.50;
+                              // E: Effort Factor (Proxy from Reps)
+                              let E = 0.50;
+                              if (reps <= 5) E = 1.00;
+                              else if (reps <= 8) E = 0.95;
+                              else if (reps <= 12) E = 0.85;
+                              else if (reps <= 20) E = 0.70;
 
-                              // ---- Intensity factor ----
-                              let intensity;
-                              if (reps <= 5) intensity = 1.0;
-                              else if (reps <= 8) intensity = 0.95;
-                              else if (reps <= 12) intensity = 0.90;
-                              else if (reps <= 20) intensity = 0.80;
-                              else intensity = 0.65;
+                              // L: Load Factor (New replacement for Intensity)
+                              const L = getLoadFactor(weight, reps);
 
-                              // ---- Unilateral multiplier ----
-                              const uniFactor = s.uni ? 2.0 : 1.0;
+                              // U: Unilateral Factor
+                              const U = s.uni ? 2.0 : 1.0;
 
-                              exerciseStimulus += effort * intensity * uniFactor;
+                              // Per Set Stimulus = E * L * U * D
+                              totalExerciseStimulus += (E * L * U * D);
                             });
                             
+                            // Distribute based on R (Recruitment)
                             if (meta && meta.muscles) {
                                 Object.entries(meta.muscles).forEach(([muscle, contribution]) => {
-                                    // Normalize muscle name key just in case Gemini output slightly varies case
                                     if (scores[muscle] !== undefined) {
-                                        const vol = exerciseStimulus * parseFloat(contribution);
-                                        scores[muscle] += vol;
+                                        // Stimulus(muscle) = SetStimulus * R
+                                        const muscleStimulus = totalExerciseStimulus * parseFloat(contribution);
+                                        scores[muscle] += muscleStimulus;
 
                                         if (!exerciseBreakdown[muscle][name]) exerciseBreakdown[muscle][name] = 0;
-                                        exerciseBreakdown[muscle][name] += vol;
+                                        exerciseBreakdown[muscle][name] += muscleStimulus;
                                     }
                                 });
                             }
@@ -1505,10 +1576,16 @@
                 // Process top exercises
                 const processedTop = {};
                 MUSCLE_GROUPS.forEach(m => {
-                    processedTop[m] = Object.entries(exerciseBreakdown[m])
+                    const totalForMuscle = scores[m];
+                    const sortedEx = Object.entries(exerciseBreakdown[m])
                         .map(([name, val]) => ({ name, value: val }))
-                        .sort((a,b) => b.value - a.value)
-                        .slice(0, 3);
+                        .sort((a,b) => b.value - a.value);
+                    
+                    // Show Top 3 OR any exercise contributing > 10% of total stimulus
+                    processedTop[m] = sortedEx.filter((ex, i) => {
+                        if (i < 3) return true;
+                        return totalForMuscle > 0 && (ex.value / totalForMuscle) > 0.10;
+                    });
                 });
 
                 return { stats: processedStats, topExercises: processedTop };
@@ -1559,7 +1636,7 @@
                                                 {s.name}
                                                 <i className={`ph-bold ph-caret-down transition-transform ${expandedMuscle === s.name ? 'rotate-180' : ''}`}></i>
                                             </span>
-                                            <span className="text-textMain">{s.value.toFixed(1)} Stimulus</span>
+                                            <span className="text-textMain">{s.value.toFixed(1)} EMS</span>
                                         </div>
                                         <div className="h-2 bg-white/5 rounded-full overflow-hidden">
                                             <div 
@@ -1593,7 +1670,7 @@
                     </div>
                     
                     <div className="mt-4 text-[10px] text-textMuted text-center opacity-50 px-8">
-                        * Analysis based on AI-generated biomechanics data. Volume is calculated based on Reps × Intensity × Effort × Muscle Recruitment.
+                        * EMS = Sum(Effort × Load × Unilateral × Recruitment × Difficulty). Unitless Stimulus Score.
                     </div>
                 </div>
             );
@@ -1838,6 +1915,7 @@
         const Layout = () => {
             const [view, setView] = useState("main"); // main, profiles, profile-detail
             const [selectedProfile, setSelectedProfile] = useState(null);
+            const [scrollY, setScrollY] = useState(0); // Track scroll for minimizing stopwatch
             
             const [tab, setTab] = useState("raghendh");
             const [isAuth, setIsAuth] = useState(false);
@@ -1892,6 +1970,14 @@
                 };
             }, []);
 
+            // Scroll Handler
+            const handleScroll = (e) => {
+                setScrollY(e.currentTarget.scrollTop);
+            };
+
+            // Calculate Shrink Progress (0 to 1 over 150px scroll)
+            const shrinkProgress = Math.min(scrollY / 150, 1);
+
             if (authError) return <SetupScreen error={authError} />;
             if (!isAuth) return (
                 <div className="h-screen bg-bg flex flex-col items-center justify-center relative overflow-hidden">
@@ -1924,7 +2010,7 @@
                     <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[40%] rounded-full bg-green-900/20 blur-[100px] pointer-events-none"></div>
 
                     {/* Main Scrollable Content */}
-                    <main className="flex-1 overflow-y-auto no-scrollbar scroll-smooth px-5 pb-5">
+                    <main className="flex-1 overflow-y-auto no-scrollbar scroll-smooth px-5 pb-5" onScroll={handleScroll}>
                         
                         {/* Header (Always Visible) */}
                         <div className="pt-6 pb-2">
@@ -1947,11 +2033,11 @@
                         {/* VIEW: MAIN DASHBOARD */}
                         {view === 'main' && (
                             <div className="fade-in">
-                                {/* Stopwatches (Only in main view) */}
+                                {/* Stopwatches (Only in main view) - Now pass shrinkProgress */}
                                 <div className="sticky top-0 z-40 py-2 bg-bg/95 backdrop-blur-xl -mx-5 px-5 border-b border-white/5 mb-4 shadow-glass transition-all">
                                     <div className="flex gap-3">
-                                        <StopwatchWidget label="Ragh" colorClass="text-primary" shadowClass="shadow-neon-purple" />
-                                        <StopwatchWidget label="Dev" colorClass="text-secondary" shadowClass="shadow-neon-green" />
+                                        <StopwatchWidget label="Ragh" colorClass="text-primary" shadowClass="shadow-neon-purple" progress={shrinkProgress} />
+                                        <StopwatchWidget label="Dev" colorClass="text-secondary" shadowClass="shadow-neon-green" progress={shrinkProgress} />
                                     </div>
                                 </div>
 
