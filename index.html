@@ -1970,6 +1970,28 @@
                 };
             }, []);
 
+            // --- HISTORY HANDLING (Fix for Mobile Back Button) ---
+            useEffect(() => {
+                // 1. Establish initial state so we don't exit immediately on first back press
+                window.history.replaceState({ view: 'main' }, '');
+
+                // 2. Listen for the browser/mobile back action
+                const handlePopState = (e) => {
+                    if (e.state && e.state.view) {
+                        // Restore the view from history
+                        setView(e.state.view);
+                        if (e.state.selectedProfile) setSelectedProfile(e.state.selectedProfile);
+                        else setSelectedProfile(null);
+                    } else {
+                        // Fallback to main if state is lost
+                        setView('main');
+                    }
+                };
+
+                window.addEventListener('popstate', handlePopState);
+                return () => window.removeEventListener('popstate', handlePopState);
+            }, []);
+
             // Scroll Handler
             const handleScroll = (e) => {
                 setScrollY(e.currentTarget.scrollTop);
@@ -2001,6 +2023,8 @@
             const handleProfileSelect = (key) => {
                 setSelectedProfile(key);
                 setView('profile-detail');
+                // PUSH NEW STATE to history stack
+                window.history.pushState({ view: 'profile-detail', selectedProfile: key }, '');
             };
 
             return (
@@ -2022,7 +2046,15 @@
                                 
                                 {/* Changed: User Icon acts as button to switch views */}
                                 <button 
-                                    onClick={() => setView(view === 'main' ? 'profiles' : 'main')}
+                                    onClick={() => {
+                                        if (view === 'main') {
+                                            setView('profiles');
+                                            window.history.pushState({ view: 'profiles' }, '');
+                                        } else {
+                                            setView('main');
+                                            window.history.pushState({ view: 'main' }, '');
+                                        }
+                                    }}
                                     className={`w-8 h-8 rounded-full border flex items-center justify-center transition-colors ${view !== 'main' ? 'bg-textMain border-textMain text-bg' : 'bg-surface border-border text-textMuted'}`}
                                 >
                                     {view === 'main' ? <i className="ph-bold ph-user"></i> : <i className="ph-bold ph-house"></i>}
@@ -2059,7 +2091,7 @@
                             <ProfileStats 
                                 userKey={selectedProfile} 
                                 allHistory={allHistory} 
-                                onBack={() => setView('profiles')} 
+                                onBack={() => window.history.back()} 
                             />
                         )}
 
