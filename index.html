@@ -185,7 +185,7 @@
                 extend: {
                     colors: {
                         // Modern Palette
-                        bg: '#09090b',       // Zinc 950
+                        bg: '#09090b',        // Zinc 950
                         surface: '#18181b', // Zinc 900
                         surfaceLight: '#27272a', // Zinc 800
                         primary: '#a855f7', // Purple
@@ -263,6 +263,13 @@
             const date = new Date();
             return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
         };
+
+        const formatDisplayDate = (isoDate) => {
+            if (!isoDate) return "";
+            const [y, m, d] = isoDate.split('-');
+            const date = new Date(y, m - 1, d);
+            return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        }
 
         const calculateAge = (dobString) => {
             const dob = new Date(dobString);
@@ -900,14 +907,14 @@
         };
 
         // 3. MAIN DASHBOARD WIDGET
-        const Dashboard = ({ userKey, allHistory, colorTheme }) => {
+        const Dashboard = ({ userKey, allHistory, colorTheme, date }) => {
             const [split, setSplit] = useState("");
             const [bodyWeight, setBodyWeight] = useState("");
             const [exercises, setExercises] = useState([]);
             const [status, setStatus] = useState("");
             // Default to -1 so all cards are collapsed by default
             const [expandedIndex, setExpandedIndex] = useState(-1); 
-            const date = getTodayDateString();
+            // const date = getTodayDateString(); // REMOVED: Now using prop
 
             // Modified to share suggestions across ALL users
             const suggestionList = useMemo(() => {
@@ -1917,6 +1924,9 @@
             const [selectedProfile, setSelectedProfile] = useState(null);
             const [scrollY, setScrollY] = useState(0); // Track scroll for minimizing stopwatch
             
+            // STATE FOR DATE SELECTION
+            const [currentDate, setCurrentDate] = useState(getTodayDateString());
+
             const [tab, setTab] = useState("raghendh");
             const [isAuth, setIsAuth] = useState(false);
             const [authError, setAuthError] = useState(null);
@@ -2041,7 +2051,18 @@
                             <div className="flex justify-between items-center mb-4">
                                 <div>
                                     <h1 className="font-teko text-3xl font-bold leading-none tracking-wide text-white">DO OR DIE</h1>
-                                    <p className="text-[10px] font-bold text-textMuted uppercase tracking-widest">{formatDatePretty()}</p>
+                                    <div className="relative inline-block">
+                                        <p className="text-[10px] font-bold text-textMuted uppercase tracking-widest flex items-center gap-1">
+                                            {currentDate === getTodayDateString() ? formatDatePretty() : formatDisplayDate(currentDate)}
+                                            <i className="ph-bold ph-caret-down text-[8px]"></i>
+                                        </p>
+                                        <input 
+                                            type="date" 
+                                            value={currentDate} 
+                                            onChange={(e) => setCurrentDate(e.target.value)} 
+                                            className="absolute inset-0 opacity-0 w-full h-full cursor-pointer z-10"
+                                        />
+                                    </div>
                                 </div>
                                 
                                 {/* Changed: User Icon acts as button to switch views */}
@@ -2074,8 +2095,8 @@
                                 </div>
 
                                 {/* Tab Content */}
-                                {tab === 'raghendh' && <Dashboard userKey="raghendh" allHistory={allHistory} colorTheme={themes.raghendh} />}
-                                {tab === 'devanandh' && <Dashboard userKey="devanandh" allHistory={allHistory} colorTheme={themes.devanandh} />}
+                                {tab === 'raghendh' && <Dashboard userKey="raghendh" allHistory={allHistory} colorTheme={themes.raghendh} date={currentDate} />}
+                                {tab === 'devanandh' && <Dashboard userKey="devanandh" allHistory={allHistory} colorTheme={themes.devanandh} date={currentDate} />}
                                 {tab === 'history' && <Timeline historyData={allHistory} />}
                                 {tab === 'pr' && <PRWidget historyData={allHistory} />}
                                 {tab === 'library' && <Catalog historyData={allHistory} metaData={metaData} />}
