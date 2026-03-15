@@ -71,8 +71,8 @@
                         bg: '#09090b',        // Zinc 950
                         surface: '#18181b', // Zinc 900
                         surfaceLight: '#27272a', // Zinc 800
-                        primary: '#a855f7', // Purple
-                        secondary: '#22c55e', // Green
+                        primary: '#22c55e', // Green
+                        secondary: '#f97316', // Orange
                         textMain: '#f4f4f5', // Zinc 100
                         textMuted: '#a1a1aa', // Zinc 400
                         border: 'rgba(255, 255, 255, 0.08)',
@@ -82,8 +82,8 @@
                         teko: ['Teko', 'sans-serif'],
                     },
                     boxShadow: {
-                        'neon-purple': '0 0 20px rgba(168, 85, 247, 0.15)',
                         'neon-green': '0 0 20px rgba(34, 197, 94, 0.15)',
+                        'neon-orange': '0 0 20px rgba(249, 115, 22, 0.15)',
                         'glass': '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
                     },
                     backgroundImage: {
@@ -169,7 +169,7 @@
                 height: 178.5,
                 color: "text-primary",
                 bg: "bg-primary",
-                shadow: "shadow-neon-purple"
+                shadow: "shadow-neon-green"
             },
             devanandh: {
                 name: "Devanandh",
@@ -177,7 +177,7 @@
                 height: 175,
                 color: "text-secondary",
                 bg: "bg-secondary",
-                shadow: "shadow-neon-green"
+                shadow: "shadow-neon-orange"
             }
         };
 
@@ -237,7 +237,7 @@
             const range = maxVal - minVal;
 
             // Determine Hex Color
-            const strokeHex = color.includes('primary') ? '#a855f7' : '#22c55e';
+            const strokeHex = color.includes('primary') ? '#22c55e' : '#f97316';
 
             // Point Calculation
             const points = useMemo(() => {
@@ -494,12 +494,13 @@
         };
 
         // 2. EXERCISE CARD
-        const ExerciseCard = ({ exercise, exIndex, updateExercise, deleteExercise, suggestionList, isExpanded, onToggleExpand, userKey, allHistory, colorTheme }) => {
+        const ExerciseCard = ({ exercise, exIndex, updateExercise, deleteExercise, suggestionList, isExpanded, onToggleExpand, userKey, allHistory, colorTheme, currentDate }) => {
             const [showRemark, setShowRemark] = useState(!!exercise.remark);
             const [showSuggestions, setShowSuggestions] = useState(false);
             
             // Toggles for new sections
             const [showPrevSets, setShowPrevSets] = useState(false);
+            const [showAllHistory, setShowAllHistory] = useState(false);
             const [showPrevNote, setShowPrevNote] = useState(false);
             const [showPRCalc, setShowPRCalc] = useState(false);
             const [prPercent, setPrPercent] = useState(50);
@@ -510,28 +511,30 @@
                 return suggestionList.filter(s => s.includes(lowerInput)).slice(0, 5);
             }, [exercise.name, suggestionList]);
 
-            // Find the immediate previous session for this exercise
-            const previousSession = useMemo(() => {
-                if(!allHistory || !exercise.name) return null;
+            // Find ALL previous sessions for this exercise
+            const exerciseHistoryList = useMemo(() => {
+                if(!allHistory || !exercise.name) return [];
                 const targetName = normalize(exercise.name);
-                const today = getTodayDateString();
+                const list = [];
                 
                 // Get all dates, sort descending to find most recent
                 const sortedDates = Object.keys(allHistory).sort().reverse();
                 
                 for (const date of sortedDates) {
-                    if (date === today) continue; // Skip today
+                    if (date === currentDate) continue; // Skip the currently viewed date
                     const dayData = allHistory[date];
                     const uData = dayData[userKey];
                     if (uData && uData.exercises) {
                         const found = uData.exercises.find(ex => normalize(ex.name) === targetName);
                         if (found) {
-                            return { date, ...found };
+                            list.push({ date, ...found });
                         }
                     }
                 }
-                return null;
-            }, [allHistory, exercise.name, userKey]);
+                return list;
+            }, [allHistory, exercise.name, userKey, currentDate]);
+
+            const previousSession = exerciseHistoryList.length > 0 ? exerciseHistoryList[0] : null;
 
             // Calculate Current User's PR for this Exercise
             const currentPRs = useMemo(() => {
@@ -558,6 +561,40 @@
                 });
                 return { bilateral: maxBi, unilateral: maxUni };
             }, [allHistory, exercise.name, userKey]);
+
+            // Determine which sessions to display in the short history view
+            const displayHistory = useMemo(() => {
+                if (showAllHistory) return exerciseHistoryList;
+
+                const summary = [];
+                const seen = new Set();
+
+                // 1. Last Session
+                if (exerciseHistoryList.length > 0) {
+                    summary.push({ ...exerciseHistoryList[0], tag: "Last Session" });
+                    seen.add(exerciseHistoryList[0].date);
+                }
+
+                // 2. Bilateral PR Session
+                if (currentPRs.bilateral > 0) {
+                    const biSession = exerciseHistoryList.find(s => (s.sets || []).some(set => !set.uni && parseFloat(set.weight) === currentPRs.bilateral));
+                    if (biSession && !seen.has(biSession.date)) {
+                        summary.push({ ...biSession, tag: "Max Bilateral" });
+                        seen.add(biSession.date);
+                    }
+                }
+
+                // 3. Unilateral PR Session
+                if (currentPRs.unilateral > 0) {
+                    const uniSession = exerciseHistoryList.find(s => (s.sets || []).some(set => set.uni && parseFloat(set.weight) === currentPRs.unilateral));
+                    if (uniSession && !seen.has(uniSession.date)) {
+                        summary.push({ ...uniSession, tag: "Max Unilateral" });
+                        seen.add(uniSession.date);
+                    }
+                }
+
+                return summary.sort((a, b) => new Date(b.date) - new Date(a.date));
+            }, [exerciseHistoryList, showAllHistory, currentPRs]);
 
             const hasPR = currentPRs.bilateral > 0 || currentPRs.unilateral > 0;
             const [prType, setPrType] = useState('bilateral');
@@ -710,23 +747,75 @@
                         </div>
                     )}
 
-                    {/* Previous Session Sets Display */}
+                    {/* Previous Session Sets Display (Full History) */}
                     {showPrevSets && (
-                        <div className="bg-black/40 p-4 border-b border-border">
-                            {previousSession ? (
-                                <div>
-                                    <div className="text-xs font-bold text-textMuted mb-2 uppercase tracking-wider">Last Session: {previousSession.date}</div>
-                                    <div className="space-y-1">
-                                        {(previousSession.sets || []).map((s, i) => (
-                                            <div key={i} className="flex justify-between items-center text-sm font-mono text-textMain bg-white/5 px-2 py-1 rounded">
-                                                <span>{s.weight}kg x {s.reps}</span>
-                                                {s.uni && <span className="text-[10px] text-textMuted border border-white/20 px-1 rounded uppercase">Uni</span>}
+                        <div className="bg-black/40 p-0 border-b border-border flex flex-col">
+                            {exerciseHistoryList.length > 0 ? (
+                                <>
+                                    {/* Stats Header */}
+                                    <div className="flex gap-2 p-3 bg-surface/50 border-b border-white/5 text-center">
+                                        <div className="flex-1 bg-white/5 rounded-lg p-1.5">
+                                            <div className="text-[9px] text-textMuted uppercase tracking-wider mb-0.5">Sessions</div>
+                                            <div className="text-lg leading-none font-teko font-bold text-textMain">{exerciseHistoryList.length}</div>
+                                        </div>
+                                        <div className="flex-1 bg-white/5 rounded-lg p-1.5">
+                                            <div className="text-[9px] text-textMuted uppercase tracking-wider mb-0.5">Max Bil</div>
+                                            <div className="text-lg leading-none font-teko font-bold text-primary">{currentPRs.bilateral > 0 ? `${currentPRs.bilateral}kg` : '-'}</div>
+                                        </div>
+                                        <div className="flex-1 bg-white/5 rounded-lg p-1.5">
+                                            <div className="text-[9px] text-textMuted uppercase tracking-wider mb-0.5">Max Uni</div>
+                                            <div className="text-lg leading-none font-teko font-bold text-secondary">{currentPRs.unilateral > 0 ? `${currentPRs.unilateral}kg` : '-'}</div>
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Scrollable List */}
+                                    <div className="max-h-64 overflow-y-auto no-scrollbar p-3 space-y-3">
+                                        {displayHistory.map((session, idx) => (
+                                            <div key={idx} className="bg-surface/50 rounded-xl p-3 border border-white/5">
+                                                <div className="flex justify-between items-center mb-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-xs font-bold text-textMuted uppercase tracking-wider">{formatDisplayDate(session.date)}</span>
+                                                        {session.tag && <span className="text-[9px] bg-white/10 text-textMuted px-1.5 py-0.5 rounded font-bold uppercase tracking-widest">{session.tag}</span>}
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    {(session.sets || []).map((s, i) => {
+                                                        const isPRBi = !s.uni && parseFloat(s.weight) === currentPRs.bilateral && currentPRs.bilateral > 0;
+                                                        const isPRUni = s.uni && parseFloat(s.weight) === currentPRs.unilateral && currentPRs.unilateral > 0;
+                                                        const isPR = isPRBi || isPRUni;
+                                                        return (
+                                                            <div key={i} className={`flex justify-between items-center text-sm font-mono px-2 py-1.5 rounded ${isPR ? 'bg-primary/20 text-primary font-bold' : 'bg-white/5 text-textMain'}`}>
+                                                                <span className="flex items-center gap-2">
+                                                                    {s.weight}kg x {s.reps}
+                                                                    {isPR && <i className="ph-fill ph-trophy text-[10px]"></i>}
+                                                                </span>
+                                                                {s.uni && <span className={`text-[10px] uppercase border px-1 rounded ${isPR ? 'border-primary/50 text-primary' : 'text-textMuted border-white/20'}`}>Uni</span>}
+                                                            </div>
+                                                        )
+                                                    })}
+                                                </div>
+                                                {session.remark && (
+                                                    <div className="mt-2 text-[10px] text-textMuted italic pl-2 border-l-2 border-white/10">
+                                                        {session.remark}
+                                                    </div>
+                                                )}
                                             </div>
                                         ))}
+
+                                        {exerciseHistoryList.length > displayHistory.length && !showAllHistory && (
+                                            <button onClick={() => setShowAllHistory(true)} className="w-full py-2.5 mt-2 text-xs font-bold text-textMuted hover:text-white bg-white/5 rounded-xl transition-colors">
+                                                Show All History ({exerciseHistoryList.length})
+                                            </button>
+                                        )}
+                                        {showAllHistory && exerciseHistoryList.length > displayHistory.length && (
+                                            <button onClick={() => setShowAllHistory(false)} className="w-full py-2.5 mt-2 text-xs font-bold text-textMuted hover:text-white bg-white/5 rounded-xl transition-colors">
+                                                Show Less
+                                            </button>
+                                        )}
                                     </div>
-                                </div>
+                                </>
                             ) : (
-                                <p className="text-sm text-textMuted italic">No previous history found.</p>
+                                <div className="p-4 text-sm text-textMuted italic">No previous history found.</div>
                             )}
                         </div>
                     )}
@@ -952,7 +1041,7 @@
                                 suggestionList={suggestionList} isExpanded={i === expandedIndex} 
                                 onToggleExpand={() => setExpandedIndex(i === expandedIndex ? -1 : i)} 
                                 userKey={userKey} allHistory={allHistory} 
-                                colorTheme={colorTheme}
+                                colorTheme={colorTheme} currentDate={date}
                             />
                         ))}
                     </div>
@@ -1648,7 +1737,7 @@
                 <div className="h-screen bg-bg flex flex-col items-center justify-center relative overflow-hidden">
                     <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
                     <div className="relative z-10 flex flex-col items-center">
-                         <div className="w-24 h-24 rounded-3xl bg-surface border border-border flex items-center justify-center mb-8 shadow-neon-purple animate-bounce">
+                         <div className="w-24 h-24 rounded-3xl bg-surface border border-border flex items-center justify-center mb-8 shadow-neon-green animate-bounce">
                              <span className="font-teko text-5xl font-bold text-white">DOD</span>
                          </div>
                         <div className="h-1 w-32 bg-surfaceLight rounded-full overflow-hidden">
@@ -1659,8 +1748,8 @@
             );
 
             const themes = {
-                raghendh: { text: 'text-primary', bg: 'bg-primary', shadow: 'neon-purple', gradient: 'from-purple-500 to-indigo-500' },
-                devanandh: { text: 'text-secondary', bg: 'bg-secondary', shadow: 'neon-green', gradient: 'from-green-500 to-emerald-500' }
+                raghendh: { text: 'text-primary', bg: 'bg-primary', shadow: 'neon-green', gradient: 'from-green-500 to-emerald-500' },
+                devanandh: { text: 'text-secondary', bg: 'bg-secondary', shadow: 'neon-orange', gradient: 'from-orange-500 to-amber-500' }
             };
 
             const handleProfileSelect = (key) => {
@@ -1722,8 +1811,8 @@
                                 {/* Stopwatches (Only in main view) - Now pass shrinkProgress */}
                                 <div className="sticky top-0 z-40 py-2 bg-bg/95 backdrop-blur-xl -mx-5 px-5 border-b border-white/5 mb-4 shadow-glass transition-all">
                                     <div className="flex gap-3">
-                                        <StopwatchWidget label="Ragh" colorClass="text-primary" shadowClass="shadow-neon-purple" progress={shrinkProgress} />
-                                        <StopwatchWidget label="Dev" colorClass="text-secondary" shadowClass="shadow-neon-green" progress={shrinkProgress} />
+                                        <StopwatchWidget label="Ragh" colorClass="text-primary" shadowClass="shadow-neon-green" progress={shrinkProgress} />
+                                        <StopwatchWidget label="Dev" colorClass="text-secondary" shadowClass="shadow-neon-blue" progress={shrinkProgress} />
                                     </div>
                                 </div>
 
@@ -1755,8 +1844,8 @@
                         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50">
                             <nav className="glass-panel rounded-2xl px-2 py-2 flex items-center gap-1 shadow-glass border border-white/10 scale-100 origin-bottom hover:scale-105 transition-transform duration-300">
                                 {[
-                                    { id: 'raghendh', icon: 'ph-barbell', activeColor: 'bg-primary text-white shadow-neon-purple' },
-                                    { id: 'devanandh', icon: 'ph-sneaker-move', activeColor: 'bg-secondary text-white shadow-neon-green' },
+                                    { id: 'raghendh', icon: 'ph-barbell', activeColor: 'bg-primary text-white shadow-neon-green' },
+                                    { id: 'devanandh', icon: 'ph-sneaker-move', activeColor: 'bg-secondary text-white shadow-neon-orange' },
                                     { id: 'history', icon: 'ph-clock-counter-clockwise', activeColor: 'bg-textMain text-bg' },
                                     { id: 'pr', icon: 'ph-trophy', activeColor: 'bg-textMain text-bg' },
                                     { id: 'library', icon: 'ph-books', activeColor: 'bg-textMain text-bg' }
