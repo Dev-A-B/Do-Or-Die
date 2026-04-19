@@ -965,7 +965,26 @@
                 return () => unsubscribe();
             }, [userKey, date]);
 
-            const updateSharedSplit = (newSplit) => { setSplit(newSplit); window.update(window.ref(window.db, date), { split: newSplit }).catch(console.error); };
+            const updateSharedSplit = (toggledSplit) => { 
+                let newSplitValue;
+                const currentSplits = split ? split.split(', ') : [];
+
+                if (toggledSplit === "Rest") {
+                    newSplitValue = "Rest"; // Selecting Rest clears others
+                } else {
+                    let list = currentSplits.filter(s => s !== "Rest");
+                    if (list.includes(toggledSplit)) {
+                        list = list.filter(s => s !== toggledSplit);
+                    } else {
+                        list.push(toggledSplit);
+                    }
+                    newSplitValue = list.join(', ');
+                }
+
+                setSplit(newSplitValue); 
+                window.update(window.ref(window.db, date), { split: newSplitValue }).catch(console.error); 
+            };
+
             const updatePersonalData = async (updates) => {
                 setStatus("Saving...");
                 try {
@@ -988,7 +1007,7 @@
             const handleUpdateExercise = (index, data) => { const newEx = [...exercises]; newEx[index] = data; setExercises(newEx); updatePersonalData({ exercises: newEx }); };
             const handleDeleteExercise = (index) => { const newEx = exercises.filter((_, i) => i !== index); setExercises(newEx); setExpandedIndex(-1); updatePersonalData({ exercises: newEx }); };
 
-            const splits = ["Push", "Pull", "Legs", "Upper", "Lower", "Full Body", "Cardio", "Arms", "Abs", "Rest"];
+            const splitsList = ["Push", "Pull", "Legs", "Quads", "Hamstrings", "Upper", "Lower", "Full Body", "Cardio", "Arms", "Abs", "Rest"];
 
             return (
                 <div className="fade-in pb-24">
@@ -1019,15 +1038,18 @@
                         <div className="relative z-10">
                             <label className="text-[10px] font-bold text-textMuted uppercase tracking-wider mb-2 block">Focus</label>
                             <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 -mx-1 px-1">
-                                {splits.map(s => (
-                                    <button 
-                                        key={s} 
-                                        onClick={() => updateSharedSplit(s)} 
-                                        className={`whitespace-nowrap px-4 py-2 rounded-xl text-xs font-bold transition-all border ${split === s ? `bg-textMain text-bg border-textMain shadow-lg shadow-white/10` : 'bg-surface border-border text-textMuted hover:bg-surfaceLight'}`}
-                                    >
-                                        {s}
-                                    </button>
-                                ))}
+                                {splitsList.map(s => {
+                                    const isSelected = split && split.split(', ').includes(s);
+                                    return (
+                                        <button 
+                                            key={s} 
+                                            onClick={() => updateSharedSplit(s)} 
+                                            className={`whitespace-nowrap px-4 py-2 rounded-xl text-xs font-bold transition-all border ${isSelected ? `bg-textMain text-bg border-textMain shadow-lg shadow-white/10` : 'bg-surface border-border text-textMuted hover:bg-surfaceLight'}`}
+                                        >
+                                            {s}
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
                     </div>
@@ -1182,11 +1204,11 @@
                                                 className="p-4 flex justify-between items-center cursor-pointer hover:bg-white/5 transition-colors"
                                                 onClick={() => setExpandedDate(isExpanded ? null : dateStr)}
                                             >
-                                                <div>
+                                                <div className="flex-1 pr-4">
                                                     <div className="text-xs font-bold text-textMuted uppercase tracking-wider mb-1">{new Date(dateStr).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</div>
-                                                    <div className="text-lg font-bold text-textMain leading-none">{splitName}</div>
+                                                    <div className="text-lg font-bold text-textMain leading-tight">{splitName}</div>
                                                 </div>
-                                                <div className={`w-8 h-8 rounded-full bg-surface flex items-center justify-center transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
+                                                <div className={`w-8 h-8 rounded-full bg-surface flex items-center justify-center transition-transform duration-300 flex-shrink-0 ${isExpanded ? 'rotate-180' : ''}`}>
                                                     <i className="ph-bold ph-caret-down text-textMuted"></i>
                                                 </div>
                                             </div>
@@ -1210,12 +1232,12 @@
                                                                                     <div className="text-xs font-bold text-textMain uppercase mb-1 truncate">{ex.name}</div>
                                                                                     <div className="space-y-1">
                                                                                         {(ex.sets || []).map((s, si) => (
-                                                                                            <div key={si} className="text-xs font-mono text-textMuted flex justify-between items-center">
+                                                                                             <div key={si} className="text-xs font-mono text-textMuted flex justify-between items-center">
                                                                                                 <span>
                                                                                                     {s.weight}kg x {s.reps}
                                                                                                     {s.uni && <span className="ml-1 text-[9px] text-textMuted border border-white/20 px-1 rounded">U</span>}
                                                                                                 </span>
-                                                                                            </div>
+                                                                                             </div>
                                                                                         ))}
                                                                                     </div>
                                                                                     {ex.remark && (
@@ -1225,7 +1247,7 @@
                                                                                     )}
                                                                                     {viewRemarks[id] && <div className="text-[10px] text-textMuted italic mt-1 pl-2 border-l-2 border-white/10">{ex.remark}</div>}
                                                                                 </div>
-                                                                            );
+                                                                             );
                                                                         })}
                                                                         {(!uData?.exercises || uData.exercises.length === 0) && <span className="text-[10px] text-white/20 italic">Rest Day</span>}
                                                                     </div>
@@ -1350,7 +1372,7 @@
         // 5. CATALOG WIDGET (LIBRARY) - Updated
         const Catalog = ({ historyData }) => {
             const [selectedSplit, setSelectedSplit] = useState("Push");
-            const splits = ["Push", "Pull", "Legs", "Upper", "Lower", "Full Body", "Cardio", "Arms", "Abs"];
+            const splits = ["Push", "Pull", "Legs", "Quads", "Hamstrings", "Upper", "Lower", "Full Body", "Cardio", "Arms", "Abs"];
             
             const exercises = useMemo(() => {
                 const uniqueSet = new Set();
@@ -1358,7 +1380,8 @@
                 if(historyData) {
                     Object.values(historyData).forEach(day => {
                         const daySplit = day.split || day.raghendh?.split || day.devanandh?.split;
-                        if(daySplit === selectedSplit) {
+                        // Handle comma-separated splits for filtering
+                        if(daySplit && daySplit.split(', ').includes(selectedSplit)) {
                             ['raghendh', 'devanandh'].forEach(u => {
                                 if(day[u]?.exercises) {
                                     day[u].exercises.forEach(e => { 
@@ -1481,7 +1504,6 @@
             const currentWeight = weightHistory.length > 0 ? parseFloat(weightHistory[weightHistory.length - 1].value) : 0;
             
             // BMI using LIVE height
-            // We use 'height' (from DB) for display/calc, unless editing
             const displayHeight = isEditingHeight ? localHeight : height;
             const bmi = currentWeight > 0 ? (currentWeight / ((displayHeight/100) ** 2)).toFixed(1) : "--";
             
@@ -1509,16 +1531,18 @@
                         const monthKey = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
                         const monthLabel = dateObj.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
                         
-                        // Determine Split
-                        let split = dayData.split || uData.split || "Unknown";
-                        // If split is "Rest", usually no exercises, but just in case
-                        if(split === "Rest") return; 
+                        // Determine Splits (can be comma-separated string)
+                        let rawSplit = dayData.split || uData.split || "Unknown";
+                        if(rawSplit === "Rest") return; 
 
                         if (!stats[monthKey]) {
                             stats[monthKey] = { label: monthLabel, counts: {}, total: 0 };
                         }
                         
-                        stats[monthKey].counts[split] = (stats[monthKey].counts[split] || 0) + 1;
+                        // Split into individual components and count
+                        rawSplit.split(', ').forEach(split => {
+                            stats[monthKey].counts[split] = (stats[monthKey].counts[split] || 0) + 1;
+                        });
                         stats[monthKey].total += 1;
                     }
                 });
@@ -1661,7 +1685,6 @@
             const [authError, setAuthError] = useState(null);
             const [allHistory, setAllHistory] = useState(null);
 
-            // MODIFIED: Polling mechanism to ensure window.auth is ready before use
             useEffect(() => {
                 let unsubscribeAuth = null;
 
@@ -1685,7 +1708,6 @@
                     return false;
                 };
 
-                // Check immediately, then poll if not ready
                 if (!initApp()) {
                     const interval = setInterval(() => {
                         if (initApp()) clearInterval(interval);
@@ -1702,20 +1724,15 @@
                 };
             }, []);
 
-            // --- HISTORY HANDLING (Fix for Mobile Back Button) ---
             useEffect(() => {
-                // 1. Establish initial state so we don't exit immediately on first back press
                 window.history.replaceState({ view: 'main' }, '');
 
-                // 2. Listen for the browser/mobile back action
                 const handlePopState = (e) => {
                     if (e.state && e.state.view) {
-                        // Restore the view from history
                         setView(e.state.view);
                         if (e.state.selectedProfile) setSelectedProfile(e.state.selectedProfile);
                         else setSelectedProfile(null);
                     } else {
-                        // Fallback to main if state is lost
                         setView('main');
                     }
                 };
@@ -1724,12 +1741,10 @@
                 return () => window.removeEventListener('popstate', handlePopState);
             }, []);
 
-            // Scroll Handler
             const handleScroll = (e) => {
                 setScrollY(e.currentTarget.scrollTop);
             };
 
-            // Calculate Shrink Progress (0 to 1 over 150px scroll)
             const shrinkProgress = Math.min(scrollY / 150, 1);
 
             if (authError) return <SetupScreen error={authError} />;
@@ -1755,7 +1770,6 @@
             const handleProfileSelect = (key) => {
                 setSelectedProfile(key);
                 setView('profile-detail');
-                // PUSH NEW STATE to history stack
                 window.history.pushState({ view: 'profile-detail', selectedProfile: key }, '');
             };
 
@@ -1787,7 +1801,6 @@
                                     </div>
                                 </div>
                                 
-                                {/* Changed: User Icon acts as button to switch views */}
                                 <button 
                                     onClick={() => {
                                         if (view === 'main') {
@@ -1808,7 +1821,7 @@
                         {/* VIEW: MAIN DASHBOARD */}
                         {view === 'main' && (
                             <div className="fade-in">
-                                {/* Stopwatches (Only in main view) - Now pass shrinkProgress */}
+                                {/* Stopwatches (Only in main view) */}
                                 <div className="sticky top-0 z-40 py-2 bg-bg/95 backdrop-blur-xl -mx-5 px-5 border-b border-white/5 mb-4 shadow-glass transition-all">
                                     <div className="flex gap-3">
                                         <StopwatchWidget label="Ragh" colorClass="text-primary" shadowClass="shadow-neon-green" progress={shrinkProgress} />
