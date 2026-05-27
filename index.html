@@ -1007,7 +1007,7 @@
             const handleUpdateExercise = (index, data) => { const newEx = [...exercises]; newEx[index] = data; setExercises(newEx); updatePersonalData({ exercises: newEx }); };
             const handleDeleteExercise = (index) => { const newEx = exercises.filter((_, i) => i !== index); setExercises(newEx); setExpandedIndex(-1); updatePersonalData({ exercises: newEx }); };
 
-            const splitsList = ["Push", "Pull", "Legs", "Quads", "Hamstrings", "Upper", "Lower", "Full Body", "Cardio", "Arms", "Abs", "Rest", "Chest", "Shoulder","Back"];
+            const splitsList = ["Push", "Pull", "Legs", "Quads", "Hamstrings", "Upper", "Lower", "Full Body", "Cardio", "Arms", "Abs", "Chest", "Shoulder","Back","Rest"];
 
             return (
                 <div className="fade-in pb-24">
