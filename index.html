@@ -1,0 +1,2779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Do or Die | DOD</title>
+    
+    <!-- PWA Settings -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#09090b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=Teko:wght@300..700&display=swap" rel="stylesheet">
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <!-- Firebase Logic -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, set, update, onValue, get, child } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+        // --- CONFIGURATION ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyByLeOnstoCGQ9vew1NYXtBe2E_xyUVgDg",
+            authDomain: "do-or-die-33610.firebaseapp.com",
+            databaseURL: "https://do-or-die-33610-default-rtdb.firebaseio.com",
+            projectId: "do-or-die-33610",
+            storageBucket: "do-or-die-33610.firebasestorage.app",
+            messagingSenderId: "816098304473",
+            appId: "1:816098304473:web:4e48a2004ccbe70db0b9c8",
+            measurementId: "G-V9K09W36L9"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        window.db = getDatabase(app);
+        window.auth = getAuth(app);
+        window.ref = ref;
+        window.set = set;
+        window.update = update;
+        window.onValue = onValue;
+        window.get = get;
+        window.child = child;
+        window.signInAnonymously = signInAnonymously;
+    </script>
+
+    <!-- Tailwind Config -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        // MacroFactor-inspired Dark Palette
+                        bg: '#0d0d0f',
+                        surface: '#161618',
+                        surfaceLight: '#1e1e22',
+                        surfaceMid: '#252529',
+                        primary: '#22c55e',   // Green (Ragh)
+                        secondary: '#f97316', // Orange (Dev)
+                        accent: '#3b82f6',    // Blue accent (MacroFactor-style)
+                        textMain: '#f0f0f2',
+                        textMuted: '#8a8a96',
+                        border: 'rgba(255, 255, 255, 0.07)',
+                        borderStrong: 'rgba(255, 255, 255, 0.14)',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        teko: ['Teko', 'sans-serif'],
+                    },
+                    boxShadow: {
+                        'neon-green': '0 0 24px rgba(34, 197, 94, 0.18)',
+                        'neon-orange': '0 0 24px rgba(249, 115, 22, 0.18)',
+                        'neon-blue': '0 0 24px rgba(59, 130, 246, 0.2)',
+                        'glass': '0 8px 32px 0 rgba(0, 0, 0, 0.5)',
+                        'card': '0 2px 12px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.06)',
+                    },
+                    backgroundImage: {
+                        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { background-color: #0d0d0f; color: #f0f0f2; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+        input, select, button, textarea { outline: none; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* MacroFactor-style panels — solid dark tiles, crisp borders */
+        .glass-panel {
+            background: #161618;
+            border: 1px solid rgba(255, 255, 255, 0.07);
+        }
+        
+        .glass-input {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.25s ease;
+        }
+        .glass-input:focus {
+            background: rgba(255, 255, 255, 0.07);
+            border-color: rgba(59, 130, 246, 0.5);
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.08);
+        }
+
+        /* Tag pill — MacroFactor style */
+        .tag-pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(255,255,255,0.06);
+            color: #8a8a96;
+        }
+
+        /* Muscle chip */
+        .muscle-chip {
+            display: inline-flex;
+            align-items: center;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            background: rgba(255,255,255,0.07);
+            color: #b0b0bc;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        /* Animations */
+        .fade-in { animation: fadeIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) both; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(18px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+        .slide-up { animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+
+        .scale-in { animation: scaleIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+        @keyframes scaleIn { from { opacity: 0; transform: scale(0.88); } to { opacity: 1; transform: scale(1); } }
+
+        /* Staggered children */
+        .stagger-children > *:nth-child(1) { animation-delay: 0ms; }
+        .stagger-children > *:nth-child(2) { animation-delay: 60ms; }
+        .stagger-children > *:nth-child(3) { animation-delay: 120ms; }
+        .stagger-children > *:nth-child(4) { animation-delay: 180ms; }
+        .stagger-children > *:nth-child(5) { animation-delay: 240ms; }
+
+        .progress-bar-fill { transition: width 1s cubic-bezier(0.4, 0, 0.2, 1); }
+
+        /* Loading screen */
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+        .shimmer::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+            animation: shimmer 1.6s infinite;
+        }
+
+        /* Spinner */
+        @keyframes spin-slow { to { transform: rotate(360deg); } }
+        .spin-slow { animation: spin-slow 2s linear infinite; }
+
+        /* Nav glow */
+        .nav-active-green { box-shadow: 0 0 16px rgba(34, 197, 94, 0.35), inset 0 1px 0 rgba(255,255,255,0.1); }
+        .nav-active-orange { box-shadow: 0 0 16px rgba(249, 115, 22, 0.35), inset 0 1px 0 rgba(255,255,255,0.1); }
+        .nav-active-white { box-shadow: 0 0 12px rgba(244, 244, 245, 0.2), inset 0 1px 0 rgba(255,255,255,0.15); }
+
+        /* Exercise card enter */
+        @keyframes cardEnter {
+            from { opacity: 0; transform: translateY(12px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .card-enter { animation: cardEnter 0.35s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+        /* Pulse ring */
+        @keyframes pulseRing {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+        }
+        .pulse-ring-green { animation: pulseRing 2s ease-out infinite; }
+
+        /* Glow border */
+        .glow-green { box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.3), 0 4px 24px rgba(34, 197, 94, 0.12); }
+        .glow-orange { box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.3), 0 4px 24px rgba(249, 115, 22, 0.12); }
+
+        /* Ticker pulse for running stopwatch */
+        @keyframes tickPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .tick-pulse { animation: tickPulse 1s ease-in-out infinite; }
+
+        /* Bottom nav pill — solid dark, MacroFactor */
+        .nav-pill {
+            background: #161618;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.04) inset;
+        }
+
+        /* Range input */
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #22c55e;
+            cursor: pointer;
+            box-shadow: 0 0 8px rgba(34,197,94,0.5);
+        }
+
+        /* Smooth tab content transition */
+        .tab-content { animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useMemo } = React;
+
+        // HELPER: Normalize strings to Uppercase for consistency
+        const normalize = (str) => str ? str.trim().toUpperCase() : "";
+        const normalizeKey = (str) => str ? str.trim().toUpperCase().replace(/[.#$/[\]]/g, '_') : "";
+
+        const getTodayDateString = () => {
+            const date = new Date();
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        };
+
+        const formatDatePretty = () => {
+            const date = new Date();
+            return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        };
+
+        const formatDisplayDate = (isoDate) => {
+            if (!isoDate) return "";
+            const [y, m, d] = isoDate.split('-');
+            const date = new Date(y, m - 1, d);
+            return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        }
+
+        const calculateAge = (dobString) => {
+            const dob = new Date(dobString);
+            const diff_ms = Date.now() - dob.getTime();
+            const age_dt = new Date(diff_ms);
+            return Math.abs(age_dt.getUTCFullYear() - 1970);
+        };
+
+        // Static User Data
+        const USER_DATA = {
+            raghendh: {
+                name: "Raghendh",
+                dob: "1999-12-17",
+                height: 178.5,
+                color: "text-primary",
+                bg: "bg-primary",
+                shadow: "shadow-neon-green"
+            },
+            devanandh: {
+                name: "Devanandh",
+                dob: "2004-01-12",
+                height: 175,
+                color: "text-secondary",
+                bg: "bg-secondary",
+                shadow: "shadow-neon-orange"
+            }
+        };
+
+        // --- NEW DATA ADDITION: CBUM TRAINING PROGRAM ---
+        const DAYS = [
+          {
+            id: 1,
+            label: "Day 1",
+            focus: "Quads & Calves",
+            emoji: "🦵",
+            color: "#C0392B",
+            exercises: [
+              {
+                name: "Leg Extensions",
+                tag: "DROP SET",
+                sets: "2",
+                reps: "20",
+                weightMethod: "Same weight both sets",
+                tempo: "3s eccentric, squeeze at top",
+                rest: "60–90 sec",
+                notes: "Pre-exhaust before squats. Last set: drop weight 30% → rep to failure immediately with no rest.",
+              },
+              {
+                name: "Smith Machine Squats",
+                tag: "MAIN COMPOUND",
+                sets: "2 working",
+                reps: "6–10",
+                weightMethod: "2 warm-up sets first (50%×15, 70%×10). Same weight both working sets. Double progression.",
+                tempo: "3–4s down, 1s pause at bottom, explode up",
+                rest: "2–3 min",
+                notes: "Primary quad compound. Go heavy. No bouncing out of the hole.",
+              },
+              {
+                name: "Unilateral Leg Press",
+                tag: "",
+                sets: "3",
+                reps: "8–10/leg",
+                weightMethod: "Same weight all 3 sets",
+                tempo: "3s eccentric, full extension (no lockout)",
+                rest: "90 sec",
+                notes: "One leg at a time. Mid-platform foot position. Drive through heel. Eliminates dominant side compensation.",
+              },
+              {
+                name: "Sissy Squats",
+                tag: "",
+                sets: "3",
+                reps: "12–15",
+                weightMethod: "Bodyweight or lightly loaded. Same difficulty all sets.",
+                tempo: "Slow and controlled throughout",
+                rest: "60 sec",
+                notes: "Lean back as far as possible. Deep stretch at bottom. Squeeze quad hard at top.",
+              },
+              {
+                name: "Seated Calf Raises",
+                tag: "",
+                sets: "3",
+                reps: "10–12",
+                weightMethod: "Same weight all sets",
+                tempo: "Full stretch (hold 1–2s), full contraction (hold 1–2s)",
+                rest: "60 sec",
+                notes: "Do not bounce. The pause at stretch and contraction is what makes this effective.",
+              },
+            ],
+          },
+          {
+            id: 2,
+            label: "Day 2",
+            focus: "Chest & Triceps",
+            emoji: "💪",
+            color: "#1A5276",
+            exercises: [
+              {
+                name: "Incline Dumbbell Press",
+                tag: "ANCHOR",
+                sets: "2 working",
+                reps: "8–10",
+                weightMethod: "3 warm-up sets: 50%×15 → 70%×10 → 85%×6. Same DB weight both working sets. Double progression.",
+                tempo: "3–4s down, 1s pause at chest, explode up",
+                rest: "2–3 min",
+                notes: "CBum's most important chest movement. Full stretch at bottom. Hard squeeze at top.",
+              },
+              {
+                name: "Incline Dumbbell Flyes",
+                tag: "",
+                sets: "2",
+                reps: "8–10",
+                weightMethod: "Same weight both sets",
+                tempo: "Wide arc, 3s eccentric, deep stretch at bottom",
+                rest: "90 sec",
+                notes: "Do not clank dumbbells at top — squeeze the pec through full contraction before returning.",
+              },
+              {
+                name: "Hammer Strength Incline Press",
+                tag: "DROP SET · ↓",
+                sets: "2",
+                reps: "6–10",
+                weightMethod: "DESCENDING: Set 1 = heaviest (6–8 reps). Set 2 = drop 15–20% (8–10 reps). Final: drop another 25% → failure.",
+                tempo: "3–4s eccentric, pause at stretch, explode up",
+                rest: "2 min",
+                notes: "Only descending pyramid in the split. Start as heavy as possible for clean reps.",
+              },
+              {
+                name: "Pec Deck Flyes",
+                tag: "PUMP",
+                sets: "3",
+                reps: "15",
+                weightMethod: "Same weight all sets — pump and detail, not strength",
+                tempo: "Pause 1s at full stretch, 1s at peak contraction",
+                rest: "60 sec",
+                notes: "Slow and controlled. Feel the chest, not the shoulders.",
+              },
+              {
+                name: "EZ Bar Skull Crushers",
+                tag: "",
+                sets: "2",
+                reps: "8–10",
+                weightMethod: "Same weight both sets",
+                tempo: "Lower bar 3–4s to forehead, pause, press back",
+                rest: "90 sec",
+                notes: "Keep elbows fixed — do not flare. Only forearm moves.",
+              },
+              {
+                name: "Push-Ups",
+                tag: "BURNOUT",
+                sets: "2",
+                reps: "To failure",
+                weightMethod: "Bodyweight only",
+                tempo: "Full range: chest to floor, full lockout at top",
+                rest: "60 sec",
+                notes: "Closes the session. Go until you physically cannot complete another rep.",
+              },
+            ],
+          },
+          {
+            id: 3,
+            label: "Day 3",
+            focus: "Back & Biceps",
+            emoji: "🏋️",
+            color: "#117A65",
+            exercises: [
+              {
+                name: "Close Grip Underhand Lat Pulldown",
+                tag: "OPENER",
+                sets: "3 working",
+                reps: "10–12",
+                weightMethod: "2 warm-up sets first. Same weight all 3 working sets.",
+                tempo: "Pull to upper chest, pause & squeeze. 3s return to full extension.",
+                rest: "90 sec",
+                notes: "Drive elbows to hips — not hands to chest. Lean back slightly. Get the full lat stretch at the top.",
+              },
+              {
+                name: "Chest-Supported Dumbbell Row",
+                tag: "",
+                sets: "2",
+                reps: "8–10",
+                weightMethod: "Same weight both sets",
+                tempo: "Full hang at bottom (stretch lat), row to hip, 3s eccentric",
+                rest: "2 min",
+                notes: "Lie chest on incline bench — eliminates ALL momentum. Pure lat and mid-back work.",
+              },
+              {
+                name: "Chest-Supported T-Bar Row",
+                tag: "DROP SET",
+                sets: "2",
+                reps: "8–10",
+                weightMethod: "1 warm-up set. Set 1 heavy. Set 2: same weight → drop 25–30% → rep to failure.",
+                tempo: "Pull to lower chest, retract scapula hard at top",
+                rest: "2 min",
+                notes: "Chest support eliminates cheating. Squeeze hard at peak contraction before slowly lowering.",
+              },
+              {
+                name: "Machine Chest-Supported Row",
+                tag: "",
+                sets: "2",
+                reps: "10–12",
+                weightMethod: "Same weight both sets",
+                tempo: "1s pause at peak. Slow full return to stretch.",
+                rest: "90 sec",
+                notes: "Pull with elbows, not hands. Drive elbows behind your body.",
+              },
+              {
+                name: "Cable Lat Extensions (V-bar, arms straight)",
+                tag: "",
+                sets: "2",
+                reps: "10–12",
+                weightMethod: "Same weight both sets",
+                tempo: "Hold contraction 1–2s. Full stretch overhead on return.",
+                rest: "60 sec",
+                notes: "Arms completely straight throughout — isolates lat without any bicep involvement.",
+              },
+              {
+                name: "Machine Preacher Curls",
+                tag: "FINISHER",
+                sets: "2",
+                reps: "10–12",
+                weightMethod: "Same weight both sets",
+                tempo: "Full stretch at bottom always. Squeeze at top, 3–4s eccentric.",
+                rest: "60 sec",
+                notes: "Never cut the range of motion. The stretch at the bottom is the most important part.",
+              },
+            ],
+          },
+          {
+            id: 4,
+            label: "Day 4",
+            focus: "REST",
+            emoji: "😴",
+            color: "#7F8C8D",
+            rest: true,
+          },
+          {
+            id: 5,
+            label: "Day 5",
+            focus: "Shoulders & Chest",
+            emoji: "🏋️",
+            color: "#784212",
+            exercises: [
+              {
+                name: "Seated Dumbbell Shoulder Press",
+                tag: "OPENER",
+                sets: "2 working",
+                reps: "6–10",
+                weightMethod: "2 warm-up sets first. Same weight both working sets. Double progression.",
+                tempo: "Lower to ear level 3–4s, 1s pause, press. Do NOT lock out — keep delt under tension.",
+                rest: "2–3 min",
+                notes: "Heaviest pressing movement of the day. Establish a solid base with warm-ups.",
+              },
+              {
+                name: "Machine Shoulder Press",
+                tag: "DROP SET",
+                sets: "3",
+                reps: "6–10",
+                weightMethod: "Same weight sets 1 & 2. Set 3: near failure → drop 25–30% → grind immediately.",
+                tempo: "3s eccentric, pause at stretch at bottom",
+                rest: "2 min",
+                notes: "Machine keeps constant tension. Drop immediately after hitting near failure.",
+              },
+              {
+                name: "DB Lateral Raises — Ascending Pyramid",
+                tag: "PYRAMID × 2",
+                sets: "8 total",
+                reps: "20 / 15 / 10 / fail",
+                weightMethod: "20lbs×20 → 30lbs×15 → 35lbs×10 → 40lbs×failure. 30 SEC rest only. Run TWICE (8 total sets).",
+                tempo: "Raise to shoulder, lead with elbow. Pause at top. Slow lower.",
+                rest: "30 sec within pyramid. 2 min between rounds.",
+                notes: "ONLY ascending pyramid in the split. Short rest is intentional. This is the medial delt volume block.",
+              },
+              {
+                name: "Machine Lateral Raises",
+                tag: "",
+                sets: "2",
+                reps: "10–12",
+                weightMethod: "Same weight both sets",
+                tempo: "Pause at top — squeeze medial delt. 3s eccentric.",
+                rest: "60 sec",
+                notes: "Strict form only. Delt is already fatigued from the pyramid — use this to refine the contraction.",
+              },
+              {
+                name: "Superset: Reverse Pec Deck + Machine Chest Flyes",
+                tag: "SUPERSET",
+                sets: "2 rounds",
+                reps: "10–12 each",
+                weightMethod: "Same weights each round. ZERO rest between exercises.",
+                tempo: "Rev Pec Deck: pause at peak rear delt contraction. Chest Flyes: squeeze at peak.",
+                rest: "90 sec between rounds",
+                notes: "Move immediately from Reverse Pec Deck to Chest Flyes. No rest. Closes the session with a pump.",
+              },
+            ],
+          },
+          {
+            id: 6,
+            label: "Day 6",
+            focus: "Hamstrings & Back",
+            emoji: "🦵",
+            color: "#6C3483",
+            exercises: [
+              {
+                name: "Lying Leg Curl",
+                tag: "PRE-EXHAUST",
+                sets: "3",
+                reps: "8–10",
+                weightMethod: "Same weight all sets",
+                tempo: "Curl up explosively, squeeze at top, 3–4s eccentric. Full stretch at bottom.",
+                rest: "90 sec",
+                notes: "Comes FIRST — pre-fatigues hamstrings before deadlifts to maximise hamstring recruitment during the lift.",
+              },
+              {
+                name: "Romanian / Stiff-Leg Deadlift",
+                tag: "MAIN COMPOUND",
+                sets: "3 working",
+                reps: "4–8",
+                weightMethod: "2–3 ascending warm-up sets (do not skip — hams are pre-fatigued). Same weight all working sets. Double progression.",
+                tempo: "Hinge at hip, 3–4s descent feeling hamstring stretch. Drive hips forward, squeeze glutes at top.",
+                rest: "2–3 min",
+                notes: "Heaviest movement of the day. Keep the hinge pattern — do not squat it. Maximum hamstring stretch at the bottom.",
+              },
+              {
+                name: "Seated Leg Curl",
+                tag: "",
+                sets: "2",
+                reps: "8–10",
+                weightMethod: "Same weight both sets",
+                tempo: "Full stretch at top, curl down, 3s eccentric. Hard squeeze at peak.",
+                rest: "90 sec",
+                notes: "Different angle to lying curl — hits hamstring in shortened position vs. lying curl's lengthened position.",
+              },
+              {
+                name: "Standing Leg Curl (unilateral)",
+                tag: "",
+                sets: "2",
+                reps: "10–12/leg",
+                weightMethod: "Same weight both sets",
+                tempo: "Slow and controlled. Full range — stretch at bottom, squeeze at top.",
+                rest: "60 sec",
+                notes: "No swinging. One leg at a time. Closes out hamstring volume for the day.",
+              },
+              {
+                name: "Wide Grip Lat Pulldown",
+                tag: "BACK WIDTH",
+                sets: "3",
+                reps: "10–12",
+                weightMethod: "Same weight all sets",
+                tempo: "Pull to upper chest, lead with elbows. 3s return to full extension.",
+                rest: "90 sec",
+                notes: "WIDTH focus (Day 3 was thickness). Wide grip hits outer lats for the V-taper.",
+              },
+              {
+                name: "Cable Lat Extension — V-bar",
+                tag: "FINISHER",
+                sets: "2",
+                reps: "12–15",
+                weightMethod: "Same weight both sets",
+                tempo: "Arms straight, push hands to hips. Hold 1–2s at contraction. Full stretch on return.",
+                rest: "60 sec",
+                notes: "Arms stay completely straight — isolates lat with no bicep involvement.",
+              },
+            ],
+          },
+          {
+            id: 7,
+            label: "Day 7",
+            focus: "Arms",
+            emoji: "💪",
+            color: "#1F618D",
+            exercises: [
+              {
+                name: "Rope Overhead Cable Extension",
+                tag: "TRI OPENER",
+                sets: "3",
+                reps: "10–12",
+                weightMethod: "Same weight all sets",
+                tempo: "3s eccentric — deep stretch behind head. Squeeze hard at full extension.",
+                rest: "90 sec",
+                notes: "Face away from cable. Elbows high & fixed. Overhead position hits the long head of tricep.",
+              },
+              {
+                name: "Cable Pressdowns",
+                tag: "",
+                sets: "3",
+                reps: "10–12",
+                weightMethod: "Same weight all sets",
+                tempo: "Elbows pinned to sides. Hold squeeze at full extension. Slow return.",
+                rest: "90 sec",
+                notes: "Only forearm moves. Hold the squeeze at the bottom — that's what makes this effective.",
+              },
+              {
+                name: "EZ Bar Preacher Curls",
+                tag: "BI OPENER",
+                sets: "3",
+                reps: "8–10",
+                weightMethod: "Same weight all sets",
+                tempo: "Full stretch at bottom always. Squeeze at top. 3–4s eccentric.",
+                rest: "90 sec",
+                notes: "Elbows stay on pad throughout. Never cut the range of motion. Bottom stretch is the most important part.",
+              },
+              {
+                name: "Incline Dumbbell Curls",
+                tag: "",
+                sets: "3",
+                reps: "10–12",
+                weightMethod: "Same weight all sets",
+                tempo: "Arms hang fully at bottom. Curl with supination twist. Squeeze at top. 3s eccentric.",
+                rest: "90 sec",
+                notes: "Incline bench gives a deep stretch to the long head — cannot be replicated standing.",
+              },
+              {
+                name: "Standing Hammer Curls",
+                tag: "FINISHER",
+                sets: "3",
+                reps: "10–12",
+                weightMethod: "Same weight all sets",
+                tempo: "Neutral grip (palms facing each other). 3s eccentric. No swinging.",
+                rest: "60 sec",
+                notes: "Targets brachialis — adds thickness between the bicep and tricep peaks. Strict form, no momentum.",
+              },
+            ],
+          },
+          {
+            id: 8,
+            label: "Day 8",
+            focus: "REST",
+            emoji: "😴",
+            color: "#7F8C8D",
+            rest: true,
+          },
+        ];
+
+        const RULES = [
+          { rule: "Same weight across sets?", method: "YES — Hold same weight on ALL working sets until you hit the top of the rep range on every set with perfect form." },
+          { rule: "When to increase weight?", method: "Only when you complete the top rep of the range on ALL sets with perfect form — not before." },
+          { rule: "How much to increase?", method: "5–15 lbs per jump. Small consistent jumps beat big jumps with sloppy form." },
+          { rule: "Eccentric tempo", method: "3–4 seconds down on EVERY exercise. Controlled the whole way." },
+          { rule: "Pause at stretch", method: "1-second dead stop at the bottom on all pressing movements. No bouncing." },
+          { rule: "Concentric (pressing up)", method: "Explosive and fast — press/pull with intent." },
+          { rule: "Drop sets", method: "Leg Extension, Hammer Strength Press, Machine Shoulder Press. Immediate drop (zero rest), grind to failure." },
+          { rule: "Lateral raises", method: "Ascending pyramid ONLY: 20lbs×20 → 30lbs×15 → 35lbs×10 → 40lbs×failure. 30 sec rest. Run TWICE." },
+          { rule: "How close to failure?", method: "1–2 reps in reserve most sets. Last set of exercise — push closer. Drop sets — true failure." },
+          { rule: "Rest — heavy compounds", method: "2–3 minutes (Squats, Deadlifts, Rows, Pressing)" },
+          { rule: "Rest — isolation machines", method: "60–90 seconds" },
+          { rule: "Rest — within superset/tri-set", method: "Zero rest between exercises. Move immediately. 90s–2 min between full rounds." },
+        ];
+
+        const TAG_COLORS = {
+          "MAIN COMPOUND": "#C0392B",
+          "ANCHOR": "#C0392B",
+          "DROP SET": "#E67E22",
+          "DROP SET · ↓": "#E67E22",
+          "PUMP": "#27AE60",
+          "BURNOUT": "#8E44AD",
+          "OPENER": "#2980B9",
+          "FINISHER": "#16A085",
+          "PYRAMID × 2": "#D35400",
+          "SUPERSET": "#2471A3",
+          "PRE-EXHAUST": "#1ABC9C",
+          "BACK WIDTH": "#7D3C98",
+          "TRI OPENER": "#C0392B",
+          "BI OPENER": "#C0392B",
+        };
+
+
+        // --- CHART COMPONENT ---
+        const ProgressChart = ({ data, color, type, onClose }) => {
+            const [filter, setFilter] = useState('day'); // day, week, month, year
+
+            // Process data based on filter
+            const chartData = useMemo(() => {
+                if (!data || data.length === 0) return [];
+                
+                // Sort raw data by date
+                const sorted = [...data].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                if (filter === 'day') return sorted.slice(-30); // Last 30 entries
+
+                // Grouping Logic
+                const grouped = {};
+                sorted.forEach(item => {
+                    const date = new Date(item.date);
+                    let key;
+                    if (filter === 'week') {
+                        // Simple ISO week approx
+                        const onejan = new Date(date.getFullYear(), 0, 1);
+                        const week = Math.ceil((((date.getTime() - onejan.getTime()) / 86400000) + onejan.getDay() + 1) / 7);
+                        key = `${date.getFullYear()}-W${week}`;
+                    } else if (filter === 'month') {
+                        key = `${date.getFullYear()}-${date.getMonth() + 1}`;
+                    } else if (filter === 'year') {
+                        key = `${date.getFullYear()}`;
+                    }
+                    
+                    if (!grouped[key]) grouped[key] = { sum: 0, count: 0, label: key };
+                    grouped[key].sum += parseFloat(item.value);
+                    grouped[key].count += 1;
+                });
+
+                return Object.values(grouped).map(g => ({
+                    date: g.label,
+                    value: (g.sum / g.count).toFixed(1)
+                })).slice(-12); // Limit to last 12 points for cleaner UI
+
+            }, [data, filter]);
+
+            // Chart Configuration
+            const width = 100;
+            const height = 60;
+            const paddingX = 10;
+            const paddingY = 10;
+            const graphWidth = width - paddingX * 2;
+            const graphHeight = height - paddingY * 2;
+
+            // Axis Logic
+            const vals = chartData.map(d => parseFloat(d.value));
+            const minVal = vals.length ? Math.min(...vals) - 1 : 0;
+            const maxVal = vals.length ? Math.max(...vals) + 1 : 10;
+            const range = maxVal - minVal;
+
+            // Determine Hex Color
+            const strokeHex = color.includes('primary') ? '#22c55e' : '#f97316';
+
+            // Point Calculation
+            const points = useMemo(() => {
+                if (chartData.length < 2) return [];
+                const step = graphWidth / (chartData.length - 1);
+                return chartData.map((d, i) => {
+                    const x = paddingX + i * step;
+                    const y = (height - paddingY) - ((parseFloat(d.value) - minVal) / range) * graphHeight;
+                    return [x, y];
+                });
+            }, [chartData, minVal, range, graphWidth, graphHeight]);
+
+            // Path Generation
+            const linePath = useMemo(() => {
+                if (points.length === 0) return "";
+                return points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p[0]},${p[1]}`).join(" ");
+            }, [points]);
+
+            const areaPath = useMemo(() => {
+                if (points.length === 0) return "";
+                const lastPoint = points[points.length - 1];
+                const firstPoint = points[0];
+                return `${linePath} L ${lastPoint[0]},${height - paddingY} L ${firstPoint[0]},${height - paddingY} Z`;
+            }, [linePath, points, height, paddingY]);
+
+            const formatDateLabel = (label) => {
+                if(filter === 'day') {
+                    const d = new Date(label);
+                    return `${d.getDate()}/${d.getMonth()+1}`;
+                }
+                if(filter === 'month') {
+                    const [y, m] = label.split('-');
+                    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                    return months[parseInt(m)-1];
+                }
+                return label.split('-').pop(); // Shorten week/year
+            };
+
+            return (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl fade-in">
+                    <div className="bg-surface/50 border border-white/10 rounded-[2rem] w-full max-w-sm p-8 relative shadow-2xl overflow-hidden backdrop-blur-md">
+                        
+                        {/* Background Glow */}
+                        <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-40 h-40 rounded-full blur-[80px] opacity-20 pointer-events-none ${color.replace('text-', 'bg-')}`}></div>
+
+                        <button onClick={onClose} className="absolute top-4 right-4 text-textMuted hover:text-white p-2 rounded-full hover:bg-white/10 transition-colors z-20">
+                            <i className="ph-bold ph-x text-xl"></i>
+                        </button>
+                        
+                        <div className="relative z-10 text-center">
+                            <h3 className="text-4xl font-teko font-bold text-textMain mb-0 leading-none uppercase tracking-wide">{type} Progress</h3>
+                            <p className="text-xs text-textMuted mb-8 uppercase tracking-[0.2em] font-medium">Analytics Overview</p>
+
+                            <div className="flex bg-black/40 rounded-xl p-1 mb-8 backdrop-blur-sm border border-white/5">
+                                {['day', 'week', 'month', 'year'].map(f => (
+                                    <button 
+                                        key={f} 
+                                        onClick={() => setFilter(f)}
+                                        className={`flex-1 py-2 rounded-lg text-[10px] font-bold uppercase transition-all ${filter === f ? 'bg-textMain text-bg shadow-lg' : 'text-textMuted hover:text-white'}`}
+                                    >
+                                        {f}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* Chart Area */}
+                            <div className="h-56 w-full mb-2 relative">
+                                {chartData.length > 0 ? (
+                                    <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="w-full h-full overflow-visible font-mono text-[3px]">
+                                        <defs>
+                                            <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="0%" stopColor={strokeHex} stopOpacity="0.3" />
+                                                <stop offset="100%" stopColor={strokeHex} stopOpacity="0" />
+                                            </linearGradient>
+                                        </defs>
+
+                                        {/* Grid Lines & Y Axis Labels */}
+                                        {[0, 0.5, 1].map((ratio, i) => {
+                                            const y = (height - paddingY) - (graphHeight * ratio);
+                                            const val = (minVal + (range * ratio)).toFixed(1);
+                                            return (
+                                                <g key={i}>
+                                                    <line x1={paddingX} y1={y} x2={width - paddingX} y2={y} stroke="rgba(255,255,255,0.05)" strokeWidth="0.2" strokeDasharray="1,1" />
+                                                    <text x={width - paddingX + 2} y={y + 1} fill="#71717a" textAnchor="start">{val}</text>
+                                                </g>
+                                            )
+                                        })}
+
+                                        {/* X Axis Labels */}
+                                        {chartData.length > 1 && (
+                                            <>
+                                                <text x={paddingX} y={height - 2} fill="#71717a" textAnchor="middle">{formatDateLabel(chartData[0].date)}</text>
+                                                <text x={width/2} y={height - 2} fill="#71717a" textAnchor="middle">{formatDateLabel(chartData[Math.floor(chartData.length/2)].date)}</text>
+                                                <text x={width - paddingX} y={height - 2} fill="#71717a" textAnchor="middle">{formatDateLabel(chartData[chartData.length-1].date)}</text>
+                                            </>
+                                        )}
+                                        
+                                        {/* Area Fill */}
+                                        <path 
+                                            d={areaPath} 
+                                            fill="url(#chartGradient)" 
+                                        />
+
+                                        {/* The Line */}
+                                        <path 
+                                            d={linePath} 
+                                            fill="none" 
+                                            stroke={strokeHex} 
+                                            strokeWidth="0.8" 
+                                            strokeLinecap="round" 
+                                            strokeLinejoin="round"
+                                            filter={`drop-shadow(0 0 4px ${strokeHex})`}
+                                        />
+                                        
+                                        {/* Last Data Point */}
+                                        {(() => {
+                                            const last = points[points.length - 1];
+                                            if(!last) return null;
+                                            return (
+                                                <g>
+                                                    <circle cx={last[0]} cy={last[1]} r="2" fill={strokeHex} opacity="0.3" className="animate-ping" />
+                                                    <circle cx={last[0]} cy={last[1]} r="1.5" fill="white" />
+                                                </g>
+                                            )
+                                        })()}
+                                    </svg>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center h-full text-textMuted opacity-50">
+                                            <i className="ph-duotone ph-chart-line-up text-4xl mb-2"></i>
+                                            <span className="text-xs">No data available</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- COMPONENTS ---
+
+        const SetupScreen = ({ error }) => (
+            <div className="min-h-screen bg-bg flex flex-col items-center justify-center p-6 text-center">
+                <div className="w-20 h-20 rounded-3xl bg-surface border border-border flex items-center justify-center mb-6 shadow-neon-purple animate-pulse">
+                    <i className="ph-fill ph-warning text-4xl text-primary"></i>
+                </div>
+                <h1 className="text-2xl font-bold text-textMain mb-2">Connection Issue</h1>
+                <p className="text-textMuted text-sm">{error?.message || "Could not connect to Firebase."}</p>
+            </div>
+        );
+
+        // 1. MODERN WIDGET STOPWATCH (Updated for Scroll Transition)
+        const StopwatchWidget = ({ label, colorClass, shadowClass, progress = 0 }) => {
+            const [time, setTime] = useState(0);
+            const [isRunning, setIsRunning] = useState(false);
+            const timerRef = useRef(null);
+            const bgClass = colorClass.replace('text-', 'bg-');
+
+            // --- Interpolation Helpers ---
+            // Maps progress (0 to 1) to a value between start and end
+            const lerp = (start, end, p) => start + (end - start) * p;
+
+            // Dimensions/Sizes calculations based on scroll progress
+            // Height: 11rem (176px) -> 5rem (80px)
+            const heightRem = lerp(11, 5, progress);
+            
+            // Time Font Size: 4.5rem -> 2.5rem
+            const timeSizeRem = lerp(4.5, 2.5, progress);
+            
+            // Label Font Size: 3rem -> 1.5rem
+            const labelSizeClass = progress > 0.5 ? 'text-xl' : 'text-5xl';
+            const labelSizeRem = lerp(3, 1.25, progress); // Using rem for smoother transition
+
+            // Padding: 1.25rem (p-5) -> 0.75rem (p-3)
+            const paddingRem = lerp(1.25, 0.75, progress);
+
+            // Opacity for secondary elements (milliseconds, blur bg)
+            // Fade out quickly in the first 50% of scroll
+            const subElementOpacity = Math.max(0, 1 - (progress * 2.5));
+
+
+            const toggle = () => {
+                if (isRunning) {
+                    clearInterval(timerRef.current);
+                    setIsRunning(false);
+                    setTime(0);
+                } else {
+                    const startTime = Date.now() - time;
+                    timerRef.current = setInterval(() => {
+                        setTime(Date.now() - startTime);
+                    }, 50); 
+                    setIsRunning(true);
+                }
+            };
+
+            const format = (ms) => {
+                const mins = Math.floor(ms / 60000).toString().padStart(2, '0');
+                const secs = Math.floor((ms % 60000) / 1000).toString().padStart(2, '0');
+                return { mins, secs };
+            };
+            
+            const { mins, secs } = format(time);
+            const decis = Math.floor((time % 1000) / 100);
+
+            return (
+                <div 
+                    onClick={toggle} 
+                    className={`relative flex-1 rounded-[2rem] cursor-pointer overflow-hidden transition-all duration-300 active:scale-95 border flex flex-col justify-between group
+                    ${isRunning ? `${bgClass} border-transparent scale-[1.02]` : `border-white/[0.06]`}`}
+                    style={{ 
+                        background: isRunning ? undefined : 'linear-gradient(160deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0) 100%)',
+                        boxShadow: isRunning 
+                            ? (colorClass.includes('primary') ? '0 8px 32px rgba(34,197,94,0.3), 0 2px 8px rgba(34,197,94,0.2)' : '0 8px 32px rgba(249,115,22,0.3), 0 2px 8px rgba(249,115,22,0.2)')
+                            : '0 2px 12px rgba(0,0,0,0.3)',
+                        height: `${heightRem}rem`,
+                        padding: `${paddingRem}rem`,
+                        transition: 'height 0.1s linear, padding 0.1s linear, box-shadow 0.3s ease'
+                    }}
+                >
+                    {!isRunning && (
+                        <div 
+                            className={`absolute -right-6 -top-6 w-28 h-28 rounded-full blur-3xl ${bgClass}`}
+                            style={{ opacity: 0.15 * subElementOpacity }}
+                        ></div>
+                    )}
+                    {isRunning && (
+                        <div className="absolute inset-0 opacity-10">
+                            <div className={`absolute -right-8 -bottom-8 w-40 h-40 rounded-full blur-3xl bg-white`}></div>
+                        </div>
+                    )}
+                    
+                    <div className="relative z-10 mt-1" style={{ lineHeight: 1 }}>
+                        <span 
+                            className={`font-teko font-bold tracking-wide uppercase block transition-colors ${isRunning ? 'text-white/80' : `${colorClass} opacity-90`}`}
+                            style={{ fontSize: `${labelSizeRem}rem`, transition: 'font-size 0.1s linear' }}
+                        >
+                            {label}
+                        </span>
+                    </div>
+                    
+                    <div className="flex items-baseline gap-0.5 relative z-10 mb-1">
+                        <span 
+                            className={`font-teko font-semibold leading-[0.75] tracking-tight transition-colors ${isRunning ? 'text-white' : 'text-textMain'}`}
+                            style={{ fontSize: `${timeSizeRem}rem`, transition: 'font-size 0.1s linear' }}
+                        >
+                            {mins}:{secs}
+                        </span>
+                        <span 
+                            className={`font-teko text-4xl font-light w-8 transition-colors ${isRunning ? 'text-white/70 tick-pulse' : 'text-textMuted'}`}
+                            style={{ opacity: subElementOpacity, transition: 'opacity 0.1s linear' }}
+                        >
+                            {decis}
+                        </span>
+                    </div>
+                    
+                    <div 
+                        className={`absolute bottom-5 right-5 w-2 h-2 rounded-full transition-all duration-300 ${isRunning ? 'bg-white animate-pulse scale-125' : 'bg-white/10'}`}
+                        style={{ opacity: subElementOpacity }}
+                    ></div>
+                </div>
+            );
+        };
+
+        // 2. EXERCISE CARD
+        const ExerciseCard = ({ exercise, exIndex, updateExercise, deleteExercise, suggestionList, isExpanded, onToggleExpand, userKey, allHistory, colorTheme, currentDate }) => {
+            const [showRemark, setShowRemark] = useState(!!exercise.remark);
+            const [showSuggestions, setShowSuggestions] = useState(false);
+            
+            // Toggles for new sections
+            const [showPrevSets, setShowPrevSets] = useState(false);
+            const [showAllHistory, setShowAllHistory] = useState(false);
+            const [showPrevNote, setShowPrevNote] = useState(false);
+            const [showPRCalc, setShowPRCalc] = useState(false);
+            const [prPercent, setPrPercent] = useState(50);
+            
+            const filteredSuggestions = useMemo(() => {
+                if (!exercise.name) return suggestionList.slice(0, 5); 
+                const lowerInput = normalize(exercise.name);
+                return suggestionList.filter(s => s.includes(lowerInput)).slice(0, 5);
+            }, [exercise.name, suggestionList]);
+
+            // Find ALL previous sessions for this exercise
+            const exerciseHistoryList = useMemo(() => {
+                if(!allHistory || !exercise.name) return [];
+                const targetName = normalize(exercise.name);
+                const list = [];
+                
+                // Get all dates, sort descending to find most recent
+                const sortedDates = Object.keys(allHistory).sort().reverse();
+                
+                for (const date of sortedDates) {
+                    if (date === currentDate) continue; // Skip the currently viewed date
+                    const dayData = allHistory[date];
+                    const uData = dayData[userKey];
+                    if (uData && uData.exercises) {
+                        const found = uData.exercises.find(ex => normalize(ex.name) === targetName);
+                        if (found) {
+                            list.push({ date, ...found });
+                        }
+                    }
+                }
+                return list;
+            }, [allHistory, exercise.name, userKey, currentDate]);
+
+            const previousSession = exerciseHistoryList.length > 0 ? exerciseHistoryList[0] : null;
+
+            // Calculate Current User's PR for this Exercise
+            const currentPRs = useMemo(() => {
+                if (!allHistory || !exercise.name) return { bilateral: 0, unilateral: 0 };
+                let maxBi = 0;
+                let maxUni = 0;
+                const targetName = normalize(exercise.name);
+                
+                Object.values(allHistory).forEach(dayData => {
+                    const uData = dayData[userKey];
+                    if (uData && uData.exercises) {
+                        uData.exercises.forEach(ex => {
+                            if (normalize(ex.name) === targetName && ex.sets) {
+                                ex.sets.forEach(s => {
+                                    const w = parseFloat(s.weight);
+                                    if (!isNaN(w)) {
+                                        if (s.uni && w > maxUni) maxUni = w;
+                                        if (!s.uni && w > maxBi) maxBi = w;
+                                    }
+                                });
+                            }
+                        });
+                    }
+                });
+                return { bilateral: maxBi, unilateral: maxUni };
+            }, [allHistory, exercise.name, userKey]);
+
+            // Determine which sessions to display in the short history view
+            const displayHistory = useMemo(() => {
+                if (showAllHistory) return exerciseHistoryList;
+
+                const summary = [];
+                const seen = new Set();
+
+                // 1. Last Session
+                if (exerciseHistoryList.length > 0) {
+                    summary.push({ ...exerciseHistoryList[0], tag: "Last Session" });
+                    seen.add(exerciseHistoryList[0].date);
+                }
+
+                // 2. Bilateral PR Session
+                if (currentPRs.bilateral > 0) {
+                    const biSession = exerciseHistoryList.find(s => (s.sets || []).some(set => !set.uni && parseFloat(set.weight) === currentPRs.bilateral));
+                    if (biSession && !seen.has(biSession.date)) {
+                        summary.push({ ...biSession, tag: "Max Bilateral" });
+                        seen.add(biSession.date);
+                    }
+                }
+
+                // 3. Unilateral PR Session
+                if (currentPRs.unilateral > 0) {
+                    const uniSession = exerciseHistoryList.find(s => (s.sets || []).some(set => set.uni && parseFloat(set.weight) === currentPRs.unilateral));
+                    if (uniSession && !seen.has(uniSession.date)) {
+                        summary.push({ ...uniSession, tag: "Max Unilateral" });
+                        seen.add(uniSession.date);
+                    }
+                }
+
+                return summary.sort((a, b) => new Date(b.date) - new Date(a.date));
+            }, [exerciseHistoryList, showAllHistory, currentPRs]);
+
+            const hasPR = currentPRs.bilateral > 0 || currentPRs.unilateral > 0;
+            const [prType, setPrType] = useState('bilateral');
+
+            useEffect(() => {
+                if (prType === 'bilateral' && currentPRs.bilateral === 0 && currentPRs.unilateral > 0) {
+                    setPrType('unilateral');
+                } else if (prType === 'unilateral' && currentPRs.unilateral === 0 && currentPRs.bilateral > 0) {
+                    setPrType('bilateral');
+                }
+            }, [currentPRs, prType]);
+
+            const addSet = () => updateExercise(exIndex, { ...exercise, sets: [...(exercise.sets || []), { weight: '', reps: '', uni: false }] });
+            const updateSet = (sIndex, field, value) => {
+                const newSets = [...exercise.sets];
+                newSets[sIndex][field] = value;
+                updateExercise(exIndex, { ...exercise, sets: newSets });
+            };
+            const removeSet = (sIndex) => updateExercise(exIndex, { ...exercise, sets: exercise.sets.filter((_, i) => i !== sIndex) });
+            
+            const handleNameSelect = (name) => { 
+                updateExercise(exIndex, { ...exercise, name: name }); 
+                setShowSuggestions(false); 
+            };
+
+            // Trigger meta check on blur
+            const handleBlurName = () => {
+                setTimeout(() => setShowSuggestions(false), 200);
+            };
+
+            if (!isExpanded) {
+                return (
+                    <div onClick={onToggleExpand} className="rounded-2xl p-4 mb-2 flex justify-between items-center cursor-pointer active:scale-[0.99] transition-all duration-200 group card-enter" style={{ background: '#161618', border: '1px solid rgba(255,255,255,0.07)' }}>
+                        <div className="flex items-center gap-3">
+                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${colorTheme.text}`} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                                <span className="font-teko text-lg font-bold">{exIndex + 1}</span>
+                            </div>
+                            <div>
+                                <h3 className="text-textMain font-semibold text-[15px] leading-tight uppercase tracking-wide">{exercise.name || "NEW EXERCISE"}</h3>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                    <span className={`text-[10px] font-bold uppercase tracking-wider ${colorTheme.text}`} style={{ background: 'rgba(255,255,255,0.05)', padding: '1px 6px', borderRadius: 4 }}>{exercise.sets?.length || 0} Sets</span>
+                                    {exercise.remark && <i className="ph-fill ph-note text-textMuted text-xs opacity-60"></i>}
+                                </div>
+                            </div>
+                        </div>
+                        <i className="ph-bold ph-caret-down text-textMuted/40 text-sm"></i>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="rounded-3xl mb-3 overflow-visible fade-in" style={{ background: '#161618', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 4px 20px rgba(0,0,0,0.4)' }}>
+                    <div className="p-5 border-b border-border flex justify-between items-start gap-4">
+                        <div className="flex-1 relative">
+                            <input 
+                                value={exercise.name}
+                                onChange={(e) => { updateExercise(exIndex, {...exercise, name: e.target.value.toUpperCase()}); setShowSuggestions(true); }}
+                                onFocus={() => setShowSuggestions(true)}
+                                onBlur={handleBlurName} 
+                                className="w-full bg-transparent text-2xl font-bold text-textMain placeholder-textMuted/30 border-none p-0 focus:ring-0 leading-none uppercase"
+                                placeholder="NAME..."
+                                autoComplete="off"
+                            />
+                            {showSuggestions && filteredSuggestions.length > 0 && (
+                                <ul className="absolute left-0 top-full w-full bg-surfaceLight border border-border rounded-xl mt-2 shadow-2xl z-50 max-h-48 overflow-y-auto overflow-x-hidden">
+                                    {filteredSuggestions.map((suggestion, i) => (
+                                        <li key={i} onMouseDown={(e) => { e.preventDefault(); handleNameSelect(suggestion); }} className="px-4 py-3 text-sm text-textMain hover:bg-white/10 cursor-pointer border-b border-white/5 last:border-0 uppercase">
+                                            {suggestion}
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+                        <div className="flex gap-1">
+                            <button onClick={() => deleteExercise(exIndex)} className="w-8 h-8 flex items-center justify-center rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20">
+                                <i className="ph-bold ph-trash"></i>
+                            </button>
+                            <button onClick={onToggleExpand} className="w-8 h-8 flex items-center justify-center rounded-lg bg-surface text-textMuted hover:bg-white/10">
+                                <i className="ph-bold ph-caret-up"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 px-5 py-3 border-b border-border bg-black/20 overflow-x-auto no-scrollbar">
+                        {/* 1. PR Button */}
+                        {hasPR && (
+                            <button onClick={() => setShowPRCalc(!showPRCalc)} className={`text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors whitespace-nowrap ${showPRCalc ? 'bg-secondary text-white shadow-neon-green' : 'bg-surface text-textMuted hover:text-textMain'}`}>
+                                <i className="ph-bold ph-percent"></i> PR
+                            </button>
+                        )}
+
+                        {/* 2. History Button */}
+                        <button onClick={() => setShowPrevSets(!showPrevSets)} className={`text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors whitespace-nowrap ${showPrevSets ? 'bg-primary text-white shadow-neon-purple' : 'bg-surface text-textMuted hover:text-textMain'}`}>
+                            <i className="ph-bold ph-clock-counter-clockwise"></i> History
+                        </button>
+
+                        {/* 3. Note Button */}
+                        <button onClick={() => setShowRemark(!showRemark)} className={`text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors whitespace-nowrap ${showRemark || exercise.remark ? 'bg-surfaceLight text-textMain border border-white/10' : 'bg-surface text-textMuted hover:text-textMain'}`}>
+                            <i className="ph-bold ph-notebook"></i> Note
+                        </button>
+
+                        {/* 4. Notes History Icon Button */}
+                        <button 
+                            onClick={() => setShowPrevNote(!showPrevNote)} 
+                            className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ml-auto ${(previousSession && previousSession.remark) ? `${colorTheme.text} bg-white/5 border border-white/5` : 'text-textMuted bg-transparent opacity-50'}`}
+                            disabled={!previousSession}
+                        >
+                            <i className="ph-bold ph-clock-counter-clockwise"></i>
+                        </button>
+                    </div>
+
+                    {/* SECTIONS */}
+
+                    {/* PR Calculation Slider */}
+                    {showPRCalc && hasPR && (
+                        <div className="p-4 bg-black/20 border-b border-border">
+                            <div className="flex justify-between items-center mb-2">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs font-bold text-textMuted uppercase tracking-wider">PR:</span>
+                                    {currentPRs.bilateral > 0 && (
+                                        <button onClick={() => setPrType('bilateral')} className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase transition-colors ${prType === 'bilateral' ? 'bg-primary text-white' : 'bg-surface text-textMuted border border-border'}`}>Bil: {currentPRs.bilateral}kg</button>
+                                    )}
+                                    {currentPRs.unilateral > 0 && (
+                                        <button onClick={() => setPrType('unilateral')} className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase transition-colors ${prType === 'unilateral' ? 'bg-secondary text-white' : 'bg-surface text-textMuted border border-border'}`}>Uni: {currentPRs.unilateral}kg</button>
+                                    )}
+                                </div>
+                                <span className="text-xl font-teko font-bold text-primary">{( (prType === 'bilateral' ? currentPRs.bilateral : currentPRs.unilateral) * prPercent / 100).toFixed(1)} <span className="text-xs text-textMuted font-sans">KG</span></span>
+                            </div>
+                            <input 
+                                type="range" 
+                                min="0" 
+                                max="100" 
+                                step="10" 
+                                value={prPercent} 
+                                onChange={(e) => setPrPercent(parseInt(e.target.value))}
+                                className="w-full h-2 bg-surfaceLight rounded-lg appearance-none cursor-pointer accent-primary"
+                            />
+                            <div className="flex justify-between items-center mt-2">
+                                <div className="flex justify-between w-full text-[10px] text-textMuted font-mono px-1">
+                                    <span>0%</span>
+                                    <span>50%</span>
+                                    <span>100%</span>
+                                </div>
+                            </div>
+                            <div className="text-center -mt-4">
+                                <span className="text-xs font-bold text-textMain bg-surface border border-border px-2 py-0.5 rounded">{prPercent}%</span>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Previous Session Sets Display (Full History) */}
+                    {showPrevSets && (
+                        <div className="bg-black/40 p-0 border-b border-border flex flex-col">
+                            {exerciseHistoryList.length > 0 ? (
+                                <>
+                                    {/* Stats Header */}
+                                    <div className="flex gap-2 p-3 bg-surface/50 border-b border-white/5 text-center">
+                                        <div className="flex-1 bg-white/5 rounded-lg p-1.5">
+                                            <div className="text-[9px] text-textMuted uppercase tracking-wider mb-0.5">Sessions</div>
+                                            <div className="text-lg leading-none font-teko font-bold text-textMain">{exerciseHistoryList.length}</div>
+                                        </div>
+                                        <div className="flex-1 bg-white/5 rounded-lg p-1.5">
+                                            <div className="text-[9px] text-textMuted uppercase tracking-wider mb-0.5">Max Bil</div>
+                                            <div className="text-lg leading-none font-teko font-bold text-primary">{currentPRs.bilateral > 0 ? `${currentPRs.bilateral}kg` : '-'}</div>
+                                        </div>
+                                        <div className="flex-1 bg-white/5 rounded-lg p-1.5">
+                                            <div className="text-[9px] text-textMuted uppercase tracking-wider mb-0.5">Max Uni</div>
+                                            <div className="text-lg leading-none font-teko font-bold text-secondary">{currentPRs.unilateral > 0 ? `${currentPRs.unilateral}kg` : '-'}</div>
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Scrollable List */}
+                                    <div className="max-h-64 overflow-y-auto no-scrollbar p-3 space-y-3">
+                                        {displayHistory.map((session, idx) => (
+                                            <div key={idx} className="bg-surface/50 rounded-xl p-3 border border-white/5">
+                                                <div className="flex justify-between items-center mb-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-xs font-bold text-textMuted uppercase tracking-wider">{formatDisplayDate(session.date)}</span>
+                                                        {session.tag && <span className="text-[9px] bg-white/10 text-textMuted px-1.5 py-0.5 rounded font-bold uppercase tracking-widest">{session.tag}</span>}
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    {(session.sets || []).map((s, i) => {
+                                                        const isPRBi = !s.uni && parseFloat(s.weight) === currentPRs.bilateral && currentPRs.bilateral > 0;
+                                                        const isPRUni = s.uni && parseFloat(s.weight) === currentPRs.unilateral && currentPRs.unilateral > 0;
+                                                        const isPR = isPRBi || isPRUni;
+                                                        return (
+                                                            <div key={i} className={`flex justify-between items-center text-sm font-mono px-2 py-1.5 rounded ${isPR ? 'bg-primary/20 text-primary font-bold' : 'bg-white/5 text-textMain'}`}>
+                                                                <span className="flex items-center gap-2">
+                                                                    {s.weight}kg x {s.reps}
+                                                                    {isPR && <i className="ph-fill ph-trophy text-[10px]"></i>}
+                                                                </span>
+                                                                {s.uni && <span className={`text-[10px] uppercase border px-1 rounded ${isPR ? 'border-primary/50 text-primary' : 'text-textMuted border-white/20'}`}>Uni</span>}
+                                                            </div>
+                                                        )
+                                                    })}
+                                                </div>
+                                                {session.remark && (
+                                                    <div className="mt-2 text-[10px] text-textMuted italic pl-2 border-l-2 border-white/10">
+                                                        {session.remark}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+
+                                        {exerciseHistoryList.length > displayHistory.length && !showAllHistory && (
+                                            <button onClick={() => setShowAllHistory(true)} className="w-full py-2.5 mt-2 text-xs font-bold text-textMuted hover:text-white bg-white/5 rounded-xl transition-colors">
+                                                Show All History ({exerciseHistoryList.length})
+                                            </button>
+                                        )}
+                                        {showAllHistory && exerciseHistoryList.length > displayHistory.length && (
+                                            <button onClick={() => setShowAllHistory(false)} className="w-full py-2.5 mt-2 text-xs font-bold text-textMuted hover:text-white bg-white/5 rounded-xl transition-colors">
+                                                Show Less
+                                            </button>
+                                        )}
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="p-4 text-sm text-textMuted italic">No previous history found.</div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Previous Session Note Display */}
+                    {showPrevNote && previousSession && (
+                        <div className="p-4 bg-black/30 border-b border-border">
+                            <div className="text-xs font-bold text-textMuted mb-1 uppercase tracking-wider">Note from {previousSession.date}:</div>
+                            <div className="text-sm text-textMain italic pl-2 border-l-2 border-white/20">
+                                {previousSession.remark || "No note recorded."}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Current Note Input */}
+                    {showRemark && (
+                        <div className="p-4 bg-black/20 border-b border-border">
+                            <textarea
+                                value={exercise.remark || ""}
+                                onChange={(e) => updateExercise(exIndex, {...exercise, remark: e.target.value})}
+                                placeholder="Add technical cues or notes..."
+                                className="w-full bg-surfaceLight/50 text-sm text-textMain placeholder-textMuted/50 rounded-xl p-3 border-none focus:ring-1 focus:ring-primary/50 resize-none min-h-[60px]"
+                            />
+                        </div>
+                    )}
+
+                    <div className="p-4">
+                        <div className="grid grid-cols-[30px_1fr_1fr_40px_30px] gap-2 mb-2 text-[10px] font-bold text-textMuted uppercase tracking-wider text-center items-center">
+                            <span>#</span>
+                            <span>KG</span>
+                            <span>Reps</span>
+                            <span>Uni</span>
+                            <span></span>
+                        </div>
+                        
+                        <div className="space-y-2">
+                            {(exercise.sets || []).map((set, sIndex) => (
+                                <div key={sIndex} className="grid grid-cols-[30px_1fr_1fr_40px_30px] gap-2 items-center">
+                                    <div className="flex items-center justify-center h-10 rounded-lg bg-surface text-textMuted font-mono text-sm">
+                                        {sIndex + 1}
+                                    </div>
+                                    <div className="h-10 relative">
+                                        <input 
+                                            type="number" 
+                                            value={set.weight} 
+                                            onChange={(e) => updateSet(sIndex, 'weight', e.target.value)} 
+                                            className="w-full h-full rounded-lg glass-input text-center text-textMain font-teko text-xl focus:ring-0"
+                                            placeholder="-"
+                                        />
+                                    </div>
+                                    <div className="h-10 relative">
+                                        <input 
+                                            type="number" 
+                                            value={set.reps} 
+                                            onChange={(e) => updateSet(sIndex, 'reps', e.target.value)} 
+                                            className="w-full h-full rounded-lg glass-input text-center text-textMain font-teko text-xl focus:ring-0"
+                                            placeholder="-"
+                                        />
+                                    </div>
+                                    <button 
+                                        onClick={() => updateSet(sIndex, 'uni', !set.uni)} 
+                                        className={`h-10 rounded-lg flex items-center justify-center border transition-all ${set.uni ? 'bg-primary border-primary text-white shadow-neon-purple' : 'bg-surface border-border text-textMuted'}`}
+                                    >
+                                        <span className="text-xs font-bold">U</span>
+                                    </button>
+                                    <button onClick={() => removeSet(sIndex)} className="h-10 flex items-center justify-center text-textMuted hover:text-red-400 transition-colors">
+                                        <i className="ph-bold ph-x"></i>
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+
+                        <button onClick={addSet} className="mt-4 w-full py-3.5 rounded-xl border border-dashed border-white/20 text-textMuted hover:text-textMain hover:bg-white/5 hover:border-white/40 transition-all flex items-center justify-center gap-2 text-sm font-medium">
+                            <i className="ph-bold ph-plus"></i> Add Set
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+
+        // 3. MAIN DASHBOARD WIDGET
+        const Dashboard = ({ userKey, allHistory, colorTheme, date }) => {
+            const [split, setSplit] = useState("");
+            const [bodyWeight, setBodyWeight] = useState("");
+            const [exercises, setExercises] = useState([]);
+            const [status, setStatus] = useState("");
+            // Default to -1 so all cards are collapsed by default
+            const [expandedIndex, setExpandedIndex] = useState(-1); 
+
+            // Modified to share suggestions across ALL users
+            const suggestionList = useMemo(() => {
+                const historySet = new Set();
+                if (allHistory) {
+                    Object.values(allHistory).forEach(dateObj => { 
+                        // Iterate through both known users
+                        ['raghendh', 'devanandh'].forEach(u => {
+                            const userData = dateObj[u]; 
+                            if (userData?.exercises) {
+                                userData.exercises.forEach(e => { 
+                                    if (e.name) historySet.add(normalize(e.name)); // Normalize here
+                                }); 
+                            }
+                        });
+                    });
+                }
+                return Array.from(historySet).sort();
+            }, [allHistory]); // Removed userKey dependency so it updates from global history
+
+            // Auto-fill Rest Day logic
+            useEffect(() => {
+                if (!allHistory || !userKey) return;
+                
+                // Determine Yesterday's date
+                const today = new Date();
+                const yesterday = new Date(today);
+                yesterday.setDate(yesterday.getDate() - 1);
+                
+                const yYear = yesterday.getFullYear();
+                const yMonth = String(yesterday.getMonth() + 1).padStart(2, '0');
+                const yDay = String(yesterday.getDate()).padStart(2, '0');
+                const yStr = `${yYear}-${yMonth}-${yDay}`;
+
+                // Check if entry exists for yesterday
+                const dayData = allHistory[yStr];
+                
+                // If the entire day node is missing OR the specific user node is missing/empty
+                if (!dayData || !dayData[userKey]) {
+                    // Automatically assign as Rest Day
+                    window.update(window.ref(window.db, `${yStr}/${userKey}`), {
+                        split: "Rest",
+                        exercises: []
+                    }).catch(console.error);
+                }
+            }, [allHistory, userKey]);
+
+            useEffect(() => {
+                if (!window.db) return;
+                const unsubscribe = window.onValue(window.ref(window.db, `${date}`), (snapshot) => {
+                    const data = snapshot.val() || {};
+                    const userData = data[userKey] || {};
+                    setSplit(data.split || userData.split || "");
+                    setBodyWeight(userData.bodyWeight || "");
+                    setExercises(userData.exercises || []);
+                    // We do NOT reset expandedIndex to 0 here to keep it collapsed
+                });
+                return () => unsubscribe();
+            }, [userKey, date]);
+
+            const updateSharedSplit = (toggledSplit) => { 
+                let newSplitValue;
+                const currentSplits = split ? split.split(', ') : [];
+
+                if (toggledSplit === "Rest") {
+                    newSplitValue = "Rest"; // Selecting Rest clears others
+                } else {
+                    let list = currentSplits.filter(s => s !== "Rest");
+                    if (list.includes(toggledSplit)) {
+                        list = list.filter(s => s !== toggledSplit);
+                    } else {
+                        list.push(toggledSplit);
+                    }
+                    newSplitValue = list.join(', ');
+                }
+
+                setSplit(newSplitValue); 
+                window.update(window.ref(window.db, date), { split: newSplitValue }).catch(console.error); 
+            };
+
+            const updatePersonalData = async (updates) => {
+                setStatus("Saving...");
+                try {
+                    let cleanExercises = exercises;
+                    if (updates.exercises) cleanExercises = updates.exercises.map(ex => ({...ex, name: normalize(ex.name)})); // Force Normalize/Uppercase on save
+                    const personalUpdate = {};
+                    if(updates.bodyWeight !== undefined) personalUpdate.bodyWeight = updates.bodyWeight;
+                    if(updates.exercises !== undefined) personalUpdate.exercises = cleanExercises;
+                    if (Object.keys(personalUpdate).length > 0) await window.update(window.ref(window.db, `${date}/${userKey}`), personalUpdate);
+                    setStatus("Saved"); setTimeout(() => setStatus(""), 1500);
+                } catch (e) { setStatus("Error"); }
+            };
+
+            const handleAddExercise = () => {
+                const newEx = [...exercises, { name: "", sets: [{weight: '', reps: '', uni: false}] }];
+                setExercises(newEx); 
+                setExpandedIndex(newEx.length - 1); // Expand ONLY the new card
+                updatePersonalData({ exercises: newEx });
+            };
+            const handleUpdateExercise = (index, data) => { const newEx = [...exercises]; newEx[index] = data; setExercises(newEx); updatePersonalData({ exercises: newEx }); };
+            const handleDeleteExercise = (index) => { const newEx = exercises.filter((_, i) => i !== index); setExercises(newEx); setExpandedIndex(-1); updatePersonalData({ exercises: newEx }); };
+
+            const splitsList = ["Push", "Pull", "Legs", "Quads", "Hamstrings", "Upper", "Lower", "Full Body", "Cardio", "Arms", "Abs", "Chest", "Shoulder","Back","Rest"];
+
+            return (
+                <div className="fade-in pb-24">
+                    {/* Header Widget — MacroFactor style */}
+                    <div className="rounded-2xl p-5 mb-4" style={{ background: '#161618', border: '1px solid rgba(255,255,255,0.07)', borderLeft: `3px solid ${colorTheme.text === 'text-primary' ? '#22c55e' : '#f97316'}` }}>
+                        <div className="flex justify-between items-start mb-4">
+                            <div>
+                                <div className="text-[10px] font-bold text-textMuted uppercase tracking-widest mb-1">Today's Session</div>
+                                <h1 className={`text-3xl font-teko font-bold tracking-wide leading-none ${colorTheme.text}`}>{userKey === 'raghendh' ? 'RAGHENDH' : 'DEVANANDH'}</h1>
+                            </div>
+                            <div className="rounded-xl px-3 py-2 text-right" style={{ background: '#1e1e22', border: '1px solid rgba(255,255,255,0.07)' }}>
+                                <div className="text-[10px] font-bold text-textMuted uppercase tracking-wider mb-0.5">Body Weight</div>
+                                <div className="flex items-baseline gap-1 justify-end">
+                                    <input 
+                                        type="number" 
+                                        value={bodyWeight} 
+                                        onChange={(e) => { setBodyWeight(e.target.value); updatePersonalData({bodyWeight: e.target.value}); }} 
+                                        placeholder="--" 
+                                        className="w-12 bg-transparent text-xl font-teko font-bold text-textMain border-none p-0 focus:ring-0 text-right" 
+                                    />
+                                    <span className="text-[10px] text-textMuted">kg</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="text-[10px] font-bold text-textMuted uppercase tracking-widest mb-2 block">Session Focus</label>
+                            <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1 -mx-1 px-1">
+                                {splitsList.map(s => {
+                                    const isSelected = split && split.split(', ').includes(s);
+                                    const isRest = s === 'Rest';
+                                    return (
+                                        <button 
+                                            key={s} 
+                                            onClick={() => updateSharedSplit(s)} 
+                                            className="whitespace-nowrap px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all border"
+                                            style={{
+                                                background: isSelected ? (isRest ? '#555' : (colorTheme.text === 'text-primary' ? 'rgba(34,197,94,0.15)' : 'rgba(249,115,22,0.15)')) : '#1e1e22',
+                                                borderColor: isSelected ? (isRest ? '#666' : (colorTheme.text === 'text-primary' ? '#22c55e' : '#f97316')) : 'rgba(255,255,255,0.07)',
+                                                color: isSelected ? (isRest ? '#ddd' : (colorTheme.text === 'text-primary' ? '#22c55e' : '#f97316')) : '#8a8a96',
+                                            }}
+                                        >
+                                            {s}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Exercise Stack */}
+                    <div className="space-y-1">
+                        {exercises.map((ex, i) => (
+                            <ExerciseCard 
+                                key={i} exercise={ex} exIndex={i} 
+                                updateExercise={handleUpdateExercise} deleteExercise={handleDeleteExercise} 
+                                suggestionList={suggestionList} isExpanded={i === expandedIndex} 
+                                onToggleExpand={() => setExpandedIndex(i === expandedIndex ? -1 : i)} 
+                                userKey={userKey} allHistory={allHistory} 
+                                colorTheme={colorTheme} currentDate={date}
+                            />
+                        ))}
+                    </div>
+
+                    <button 
+                        onClick={handleAddExercise} 
+                        className={`fixed bottom-24 right-5 w-14 h-14 rounded-2xl ${colorTheme.bg} flex items-center justify-center text-white hover:scale-110 active:scale-95 transition-all duration-200 z-40 border border-white/20`}
+                        style={{ boxShadow: colorTheme.bg.includes('primary') ? '0 8px 24px rgba(34,197,94,0.4), 0 2px 8px rgba(34,197,94,0.3)' : '0 8px 24px rgba(249,115,22,0.4), 0 2px 8px rgba(249,115,22,0.3)' }}
+                    >
+                        <i className="ph-bold ph-plus text-2xl"></i>
+                    </button>
+
+                    {status && (
+                        <div className="fixed bottom-24 left-5 bg-surface/80 backdrop-blur-md border border-border text-textMain px-4 py-2 rounded-xl text-xs font-bold shadow-2xl flex items-center gap-2 fade-in z-50">
+                            <div className={`w-2 h-2 rounded-full ${colorTheme.bg}`}></div> {status}
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        // 4. TIMELINE WIDGET (HISTORY)
+        const Timeline = ({ historyData }) => {
+            const [searchTerm, setSearchTerm] = useState("");
+            const [expandedDate, setExpandedDate] = useState(null); 
+            const [viewRemarks, setViewRemarks] = useState({});
+            
+            const toggleRemark = (id) => setViewRemarks(prev => ({...prev, [id]: !prev[id]}));
+
+            const allExerciseNames = useMemo(() => {
+                const uniqueNames = new Set();
+                if (historyData) {
+                    Object.values(historyData).forEach(dateObj => {
+                        ['raghendh', 'devanandh'].forEach(u => {
+                            dateObj[u]?.exercises?.forEach(e => { 
+                                if(e.name) {
+                                    uniqueNames.add(normalize(e.name)); // Normalize here
+                                }
+                            });
+                        });
+                    });
+                }
+                return Array.from(uniqueNames).sort();
+            }, [historyData]);
+
+            // Filter out non-date keys (like "profiles")
+            const dates = Object.keys(historyData || {})
+                .filter(k => k.match(/^\d{4}-\d{2}-\d{2}$/)) // Strictly match YYYY-MM-DD
+                .sort()
+                .reverse();
+            
+            const searchResults = useMemo(() => {
+                if (!searchTerm) return null;
+                const term = normalize(searchTerm);
+                if (!term) return null;
+
+                const res = { raghendh: [], devanandh: [] };
+                dates.forEach(date => {
+                    const dayData = historyData[date];
+                    ['raghendh', 'devanandh'].forEach(u => {
+                        if (dayData[u]?.exercises) {
+                            dayData[u].exercises.forEach(ex => { 
+                                if (ex.name && normalize(ex.name).includes(term)) {
+                                    res[u].push({ date, split: dayData.split || dayData[u].split, bw: dayData[u].bodyWeight, exercise: ex }); 
+                                }
+                            });
+                        }
+                    });
+                });
+                return res;
+            }, [searchTerm, historyData, dates]);
+
+            return (
+                <div className="pb-24 pt-2 fade-in">
+                    <div className="glass-panel rounded-2xl p-2 mb-4 flex items-center gap-3" style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.3)' }}>
+                        <div className="w-10 h-10 rounded-xl bg-surface flex items-center justify-center text-textMuted">
+                            <i className="ph-bold ph-magnifying-glass text-xl"></i>
+                        </div>
+                        <input 
+                            list="history-search" 
+                            value={searchTerm} 
+                            onChange={(e) => setSearchTerm(e.target.value)} 
+                            placeholder="Search history..." 
+                            className="bg-transparent border-none flex-1 text-textMain placeholder-textMuted focus:ring-0 text-sm font-medium uppercase" 
+                        />
+                        {searchTerm && (
+                            <button onClick={() => setSearchTerm("")} className="w-10 h-10 flex items-center justify-center text-textMuted hover:text-white">
+                                <i className="ph-fill ph-x-circle text-xl"></i>
+                            </button>
+                        )}
+                        <datalist id="history-search">{allExerciseNames.map((name, i) => <option key={i} value={name} />)}</datalist>
+                    </div>
+
+                    {searchTerm && searchResults ? (
+                        <div className="space-y-4">
+                            {['raghendh', 'devanandh'].map(u => (
+                                <div key={u}>
+                                    <h3 className={`text-xs font-black uppercase tracking-widest mb-3 pl-2 ${u === 'raghendh' ? 'text-primary' : 'text-secondary'}`}>{u}</h3>
+                                    <div className="space-y-3">
+                                        {searchResults[u].map((item, i) => (
+                                            <div key={i} className="glass-panel rounded-2xl p-4 border-l-4 border-l-surfaceLight relative overflow-hidden">
+                                                <div className={`absolute left-0 top-0 bottom-0 w-1 ${u === 'raghendh' ? 'bg-primary' : 'bg-secondary'}`}></div>
+                                                <div className="flex justify-between items-center mb-2">
+                                                    <span className="text-xs font-bold text-textMuted bg-surface px-2 py-1 rounded-lg">{item.date}</span>
+                                                    {item.bw && <span className="text-[10px] text-textMuted">BW: {item.bw}kg</span>}
+                                                </div>
+                                                <h4 className="font-bold text-textMain mb-2 uppercase">{item.exercise.name}</h4>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {item.exercise.sets?.map((s, si) => (
+                                                        <div key={si} className="bg-surface border border-border px-2 py-1 rounded text-xs font-mono text-textMain flex items-center gap-1">
+                                                            {s.weight}kg x {s.reps}
+                                                            {s.uni && <span className="text-[9px] text-textMuted uppercase border-l border-white/10 pl-1 ml-1">U</span>}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="space-y-3 relative">
+                            <div className="absolute left-[19px] top-4 bottom-0 w-0.5 bg-border z-0"></div>
+                            {dates.map(dateStr => {
+                                const dayData = historyData[dateStr];
+                                if (!dayData) return null;
+                                const splitName = dayData.split || dayData.raghendh?.split || dayData.devanandh?.split || '-';
+                                const isExpanded = expandedDate === dateStr;
+
+                                return (
+                                    <div key={dateStr} className="relative z-10 pl-10">
+                                        <div className="absolute left-0 top-1 w-10 h-10 rounded-full bg-surface border-4 border-bg flex items-center justify-center text-textMuted text-[10px] font-bold shadow-sm">
+                                            {dateStr.split('-')[2]}
+                                        </div>
+                                        
+                                        <div className="glass-panel rounded-2xl mb-4 overflow-hidden">
+                                            <div 
+                                                className="p-4 flex justify-between items-center cursor-pointer hover:bg-white/5 transition-colors"
+                                                onClick={() => setExpandedDate(isExpanded ? null : dateStr)}
+                                            >
+                                                <div className="flex-1 pr-4">
+                                                    <div className="text-xs font-bold text-textMuted uppercase tracking-wider mb-1">{new Date(dateStr).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</div>
+                                                    <div className="text-lg font-bold text-textMain leading-tight">{splitName}</div>
+                                                </div>
+                                                <div className={`w-8 h-8 rounded-full bg-surface flex items-center justify-center transition-transform duration-300 flex-shrink-0 ${isExpanded ? 'rotate-180' : ''}`}>
+                                                    <i className="ph-bold ph-caret-down text-textMuted"></i>
+                                                </div>
+                                            </div>
+                                            
+                                            {isExpanded && (
+                                                <div className="border-t border-border bg-black/20 p-4">
+                                                    <div className="grid grid-cols-2 gap-4 divide-x divide-border">
+                                                        {['raghendh', 'devanandh'].map(u => {
+                                                            const uData = dayData[u];
+                                                            const color = u === 'raghendh' ? 'text-primary' : 'text-secondary';
+                                                            return (
+                                                                <div key={u} className={u === 'devanandh' ? 'pl-4' : ''}>
+                                                                    <div className={`text-[10px] font-black uppercase mb-3 ${color}`}>{u}</div>
+                                                                    {uData?.bodyWeight && <div className="text-[10px] mb-3 text-textMuted bg-surface inline-block px-2 py-0.5 rounded">BW: {uData.bodyWeight}kg</div>}
+                                                                    
+                                                                    <div className="space-y-4">
+                                                                        {(uData?.exercises || []).map((ex, i) => {
+                                                                             const id = `${dateStr}-${u}-${i}`;
+                                                                             return (
+                                                                                <div key={i}>
+                                                                                    <div className="text-xs font-bold text-textMain uppercase mb-1 truncate">{ex.name}</div>
+                                                                                    <div className="space-y-1">
+                                                                                        {(ex.sets || []).map((s, si) => (
+                                                                                             <div key={si} className="text-xs font-mono text-textMuted flex justify-between items-center">
+                                                                                                <span>
+                                                                                                    {s.weight}kg x {s.reps}
+                                                                                                    {s.uni && <span className="ml-1 text-[9px] text-textMuted border border-white/20 px-1 rounded">U</span>}
+                                                                                                </span>
+                                                                                             </div>
+                                                                                        ))}
+                                                                                    </div>
+                                                                                    {ex.remark && (
+                                                                                        <button onClick={(e) => { e.stopPropagation(); toggleRemark(id); }} className="mt-1 text-[10px] text-textMuted hover:text-white flex items-center gap-1">
+                                                                                            <i className="ph-fill ph-note"></i> Note
+                                                                                        </button>
+                                                                                    )}
+                                                                                    {viewRemarks[id] && <div className="text-[10px] text-textMuted italic mt-1 pl-2 border-l-2 border-white/10">{ex.remark}</div>}
+                                                                                </div>
+                                                                             );
+                                                                        })}
+                                                                        {(!uData?.exercises || uData.exercises.length === 0) && <span className="text-[10px] text-white/20 italic">Rest Day</span>}
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        // --- NEW WIDGET: PRWidget ---
+        const PRWidget = ({ historyData }) => {
+            const [selectedUser, setSelectedUser] = useState('raghendh');
+            const [searchTerm, setSearchTerm] = useState("");
+
+            const prs = useMemo(() => {
+                if (!historyData) return [];
+                const records = {}; 
+
+                Object.values(historyData).forEach(day => {
+                    const uData = day[selectedUser];
+                    if (uData?.exercises) {
+                        uData.exercises.forEach(ex => {
+                            if (!ex.name) return;
+                            const name = normalize(ex.name);
+                            
+                            if (!records[name]) records[name] = { bi: 0, uni: 0 };
+                            
+                            if (ex.sets) {
+                                ex.sets.forEach(s => {
+                                    const w = parseFloat(s.weight);
+                                    if (!isNaN(w)) {
+                                        if (s.uni && w > records[name].uni) records[name].uni = w;
+                                        if (!s.uni && w > records[name].bi) records[name].bi = w;
+                                    }
+                                });
+                            }
+                        });
+                    }
+                });
+
+                return Object.entries(records)
+                    .filter(([_, r]) => r.bi > 0 || r.uni > 0)
+                    .map(([name, r]) => ({ name, bi: r.bi, uni: r.uni }))
+                    .sort((a, b) => Math.max(b.bi, b.uni) - Math.max(a.bi, a.uni)); 
+            }, [historyData, selectedUser]);
+
+            const filteredPRs = prs.filter(p => p.name.includes(normalize(searchTerm)));
+
+            return (
+                <div className="pb-24 pt-2 fade-in px-2">
+                    <h2 className="text-2xl font-teko font-bold text-textMain mb-1 uppercase tracking-wide">Personal Records</h2>
+                    <p className="text-[10px] text-textMuted uppercase tracking-widest mb-5">All-time bests</p>
+                    
+                    {/* User Toggle */}
+                    <div className="flex bg-surface rounded-xl p-1 border border-white/[0.06] mb-4" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
+                        {['raghendh', 'devanandh'].map(u => (
+                            <button 
+                                key={u} 
+                                onClick={() => setSelectedUser(u)}
+                                className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase transition-all ${selectedUser === u ? 'bg-textMain text-bg shadow-md' : 'text-textMuted'}`}
+                            >
+                                {u}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Search */}
+                    <div className="glass-panel rounded-xl p-2 mb-4 flex items-center gap-2">
+                        <i className="ph-bold ph-magnifying-glass text-textMuted pl-2"></i>
+                        <input 
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="Search exercise..."
+                            className="bg-transparent border-none w-full text-sm text-textMain placeholder-textMuted focus:ring-0"
+                        />
+                    </div>
+
+                    {/* List */}
+                    <div className="space-y-2">
+                        {filteredPRs.map((pr, i) => (
+                            <div key={i} className="glass-panel rounded-xl p-4 flex justify-between items-center hover:bg-white/[0.04] transition-all duration-200 card-enter" style={{ animationDelay: `${i * 40}ms` }}>
+                                <div className="flex items-center gap-3 w-1/2">
+                                    <div className={`w-1 h-8 rounded-full ${selectedUser === 'raghendh' ? 'bg-primary' : 'bg-secondary'} opacity-60`}></div>
+                                    <span className="font-bold text-textMain uppercase text-sm truncate pr-2">{pr.name}</span>
+                                </div>
+                                <div className="flex items-center gap-3 w-1/2 justify-end text-right">
+                                    {pr.bi > 0 && (
+                                        <div className="flex flex-col items-end leading-none">
+                                            <span className="text-[9px] text-textMuted uppercase tracking-wider font-bold mb-0.5">Bil</span>
+                                            <div className="flex items-baseline gap-0.5">
+                                                <span className="text-xl font-teko font-bold text-primary">{pr.bi}</span>
+                                                <span className="text-[10px] text-textMuted">kg</span>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {pr.uni > 0 && (
+                                        <div className="flex flex-col items-end leading-none">
+                                            <span className="text-[9px] text-textMuted uppercase tracking-wider font-bold mb-0.5">Uni</span>
+                                            <div className="flex items-baseline gap-0.5">
+                                                <span className="text-xl font-teko font-bold text-secondary">{pr.uni}</span>
+                                                <span className="text-[10px] text-textMuted">kg</span>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                        {filteredPRs.length === 0 && (
+                            <div className="text-center text-textMuted text-xs py-8">No records found.</div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        // 5. CATALOG WIDGET (LIBRARY)
+        const Catalog = ({ historyData }) => {
+            const [selectedSplit, setSelectedSplit] = useState("Push");
+            const splits = ["Push", "Pull", "Legs", "Quads", "Hamstrings", "Upper", "Lower", "Full Body", "Cardio", "Arms", "Abs", "Chest", "Shoulder","Back"];
+            
+            const exercises = useMemo(() => {
+                const uniqueSet = new Set();
+                const displayList = [];
+                if(historyData) {
+                    Object.values(historyData).forEach(day => {
+                        const daySplit = day.split || day.raghendh?.split || day.devanandh?.split;
+                        // Handle comma-separated splits for filtering
+                        if(daySplit && daySplit.split(', ').includes(selectedSplit)) {
+                            ['raghendh', 'devanandh'].forEach(u => {
+                                if(day[u]?.exercises) {
+                                    day[u].exercises.forEach(e => { 
+                                        if(e.name) {
+                                            const clean = normalize(e.name);
+                                            if(!uniqueSet.has(clean)) {
+                                                uniqueSet.add(clean);
+                                                displayList.push(clean);
+                                            }
+                                        }
+                                    });
+                                }
+                            });
+                        }
+                    });
+                }
+                return displayList.sort();
+            }, [historyData, selectedSplit]);
+
+            return (
+                <div className="pb-24 pt-2 fade-in">
+                    <h2 className="text-xl font-bold text-textMain mb-4 px-2">Exercise Catalog</h2>
+                    <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 px-2 -mx-2 mb-4">
+                        {splits.map(s => (
+                            <button key={s} onClick={() => setSelectedSplit(s)} className={`whitespace-nowrap px-4 py-2 rounded-xl text-xs font-bold border transition-all ${selectedSplit === s ? 'bg-textMain text-bg border-textMain' : 'bg-surface border-border text-textMuted hover:bg-surfaceLight'}`}>
+                                {s}
+                            </button>
+                        ))}
+                    </div>
+                    
+                    <div className="glass-panel rounded-3xl p-1 min-h-[300px]">
+                        {exercises.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center h-64 text-textMuted opacity-50">
+                                <i className="ph-duotone ph-barbell text-4xl mb-2"></i>
+                                <p className="text-sm">No exercises found</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 divide-y divide-white/5">
+                                {exercises.map((ex, i) => (
+                                    <div key={i} className="p-4 flex items-center gap-4 hover:bg-white/5 transition-colors first:rounded-t-3xl last:rounded-b-3xl">
+                                        <div className="w-8 h-8 rounded-lg bg-surface flex items-center justify-center text-primary">
+                                            <i className="ph-fill ph-check-circle"></i>
+                                        </div>
+                                        <span className="text-sm font-medium text-textMain uppercase flex-1">{ex}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        // --- NEW WIDGET: PROGRAM WIDGET ---
+        const ProgramWidget = () => {
+            const [activeDay, setActiveDay] = useState(1);
+            const [expandedEx, setExpandedEx] = useState(null);
+            const [activeTab, setActiveTab] = useState("split");
+            // Add-to-exercise modal state
+            const [addModal, setAddModal] = useState(null);
+            const [addTarget, setAddTarget] = useState("raghendh");
+            const [addSets, setAddSets] = useState(3);
+            const [addReps, setAddReps] = useState("");
+            const [addStatus, setAddStatus] = useState("");
+
+            const currentDay = DAYS.find((d) => d.id === activeDay);
+
+            const openAddModal = (ex, dayColor) => {
+                setAddModal({ ex, dayColor });
+                setAddTarget("raghendh");
+                setAddSets(parseInt(ex.sets) || 3);
+                setAddReps(ex.reps || "");
+                setAddStatus("");
+            };
+
+            const confirmAddExercise = async () => {
+                if (!addModal || !window.db) return;
+                const today = getTodayDateString();
+                try {
+                    setAddStatus("Adding...");
+                    const snap = await window.get(window.child(window.ref(window.db), `${today}/${addTarget}`));
+                    const existing = snap.val() || {};
+                    const currentExercises = existing.exercises || [];
+                    const newSets = Array.from({ length: addSets }, () => ({ weight: '', reps: addReps.split('\u2013')[0] || addReps.split('-')[0] || '', uni: false }));
+                    const newEx = { name: normalize(addModal.ex.name), sets: newSets };
+                    const updated = [...currentExercises, newEx];
+                    await window.update(window.ref(window.db, `${today}/${addTarget}`), { exercises: updated });
+                    setAddStatus("Added ✓");
+                    setTimeout(() => { setAddModal(null); setAddStatus(""); }, 900);
+                } catch (e) {
+                    setAddStatus("Error. Try again.");
+                }
+            };
+
+            return (
+                <div className="fade-in pb-24 pt-2">
+                    {/* Add-to-Exercise Modal */}
+                    {addModal && (
+                        <div className="fixed inset-0 z-[100] flex items-end justify-center" style={{ background: 'rgba(0,0,0,0.78)' }} onClick={() => setAddModal(null)}>
+                            <div className="w-full max-w-md rounded-t-3xl p-6 pb-10" style={{ background: '#161618', border: '1px solid rgba(255,255,255,0.1)', borderBottom: 'none', marginBottom: '80px' }} onClick={e => e.stopPropagation()}>
+                                <div className="w-10 h-1 rounded-full bg-white/20 mx-auto mb-5"></div>
+                                <div className="flex items-start gap-3 mb-5">
+                                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: addModal.dayColor + '22', border: `1px solid ${addModal.dayColor}44` }}>
+                                        <i className="ph-bold ph-barbell" style={{ color: addModal.dayColor }}></i>
+                                    </div>
+                                    <div>
+                                        <div className="text-[10px] font-bold text-textMuted uppercase tracking-widest mb-0.5">Add Exercise</div>
+                                        <div className="text-base font-bold text-textMain leading-tight">{addModal.ex.name}</div>
+                                    </div>
+                                </div>
+                                <div className="mb-4">
+                                    <label className="text-[10px] font-bold text-textMuted uppercase tracking-widest block mb-2">Add To</label>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {['raghendh', 'devanandh'].map(u => (
+                                            <button key={u} onClick={() => setAddTarget(u)}
+                                                className={`py-2.5 rounded-xl text-sm font-bold transition-all border ${addTarget === u ? (u === 'raghendh' ? 'border-primary text-primary' : 'border-secondary text-secondary') : 'border-border text-textMuted'}`}
+                                                style={{ background: addTarget === u ? (u === 'raghendh' ? 'rgba(34,197,94,0.1)' : 'rgba(249,115,22,0.1)') : '#1e1e22' }}>
+                                                {u === 'raghendh' ? 'Raghendh' : 'Devanandh'}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3 mb-5">
+                                    <div>
+                                        <label className="text-[10px] font-bold text-textMuted uppercase tracking-widest block mb-2">Sets</label>
+                                        <div className="flex items-center gap-2 rounded-xl border border-border p-2" style={{ background: '#1e1e22' }}>
+                                            <button onClick={() => setAddSets(s => Math.max(1, s - 1))} className="w-8 h-8 rounded-lg flex items-center justify-center text-textMuted hover:text-textMain transition-colors" style={{ background: '#161618' }}>
+                                                <i className="ph-bold ph-minus text-sm"></i>
+                                            </button>
+                                            <span className="flex-1 text-center font-teko text-2xl font-bold text-textMain">{addSets}</span>
+                                            <button onClick={() => setAddSets(s => Math.min(10, s + 1))} className="w-8 h-8 rounded-lg flex items-center justify-center text-textMuted hover:text-textMain transition-colors" style={{ background: '#161618' }}>
+                                                <i className="ph-bold ph-plus text-sm"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-bold text-textMuted uppercase tracking-widest block mb-2">Target Reps</label>
+                                        <input
+                                            type="text"
+                                            value={addReps}
+                                            onChange={e => setAddReps(e.target.value)}
+                                            placeholder={addModal.ex.reps || "e.g. 8-10"}
+                                            className="w-full rounded-xl px-3 py-2.5 text-sm font-medium text-textMain placeholder-textMuted/40 focus:ring-0 border border-border"
+                                            style={{ background: '#1e1e22' }}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="flex items-start gap-2 mb-5 rounded-xl p-3 border border-white/5" style={{ background: 'rgba(0,0,0,0.3)' }}>
+                                    <i className="ph-fill ph-info text-textMuted/50 mt-0.5 shrink-0 text-xs"></i>
+                                    <div className="text-[11px] text-textMuted leading-relaxed">
+                                        <span className="text-textMain font-medium">Program default:</span> {addModal.ex.sets} sets × {addModal.ex.reps} · {addModal.ex.rest} rest
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={confirmAddExercise}
+                                    disabled={addStatus === "Adding..."}
+                                    className="w-full py-4 rounded-2xl text-white font-bold text-sm tracking-wide transition-all active:scale-[0.98]"
+                                    style={{ background: '#3b82f6', boxShadow: '0 8px 24px rgba(59,130,246,0.35)' }}
+                                >
+                                    {addStatus || "Add to Today's Workout"}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Header */}
+                    <div className="rounded-2xl p-5 mb-5" style={{ background: '#161618', border: '1px solid rgba(255,255,255,0.07)', borderLeft: '3px solid #3b82f6' }}>
+                        <div className="text-[10px] font-bold uppercase tracking-[0.25em] mb-1.5" style={{ color: '#3b82f6' }}>The Master · 8-Day Rotation Split</div>
+                        <h1 className="text-2xl font-black text-textMain tracking-tight mb-1">8-Day Workout Split</h1>
+                        <div className="text-[12px] text-textMuted">3 Days On · 1 Day Off · Double Progression Loading</div>
+                        <div className="flex gap-2 mt-4">
+                            {[["split", "📋 Split"], ["rules", "⚖️ Rules"]].map(([id, label]) => (
+                                <button key={id} onClick={() => setActiveTab(id)}
+                                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all border`}
+                                    style={{ background: activeTab === id ? '#3b82f6' : '#1e1e22', color: activeTab === id ? '#fff' : '#8a8a96', borderColor: activeTab === id ? '#3b82f6' : 'rgba(255,255,255,0.07)' }}>
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div>
+                        {activeTab === "split" && (
+                            <>
+                                {/* Day chips */}
+                                <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 -mx-1 px-1 mb-5">
+                                    {DAYS.map((d) => (
+                                        <button key={d.id} onClick={() => { setActiveDay(d.id); setExpandedEx(null); }}
+                                            className="shrink-0 rounded-xl transition-all text-center"
+                                            style={{ padding: "10px 14px", background: activeDay === d.id ? d.color : '#1e1e22', color: activeDay === d.id ? '#fff' : d.rest ? '#555' : '#888', border: `1px solid ${activeDay === d.id ? d.color : 'rgba(255,255,255,0.07)'}`, minWidth: 76, fontWeight: "bold", fontSize: 12, lineHeight: 1.4 }}>
+                                            <div style={{ fontSize: 15 }}>{d.emoji}</div>
+                                            <div style={{ fontFamily: 'Inter, sans-serif' }}>{d.label}</div>
+                                            <div style={{ fontWeight: "normal", fontSize: 10, opacity: 0.75 }}>{d.rest ? "REST" : d.focus.split(" & ")[0]}</div>
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {/* Day header */}
+                                <div className="rounded-2xl p-4 mb-4 flex items-center gap-3" style={{ background: currentDay.color + '14', border: `1px solid ${currentDay.color}33`, borderLeft: `4px solid ${currentDay.color}` }}>
+                                    <span style={{ fontSize: 28 }}>{currentDay.emoji}</span>
+                                    <div className="flex-1">
+                                        <div className="text-[10px] font-bold uppercase tracking-[0.2em] mb-0.5" style={{ color: currentDay.color }}>{currentDay.label}</div>
+                                        <div className="text-lg font-black text-textMain">{currentDay.focus}</div>
+                                    </div>
+                                    {!currentDay.rest && (
+                                        <div className="text-right">
+                                            <div className="text-[10px] text-textMuted uppercase tracking-wider">Exercises</div>
+                                            <div className="text-2xl font-teko font-bold text-textMain leading-none">{currentDay.exercises?.length || 0}</div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* REST DAY */}
+                                {currentDay.rest && (
+                                    <div className="rounded-2xl p-10 text-center" style={{ background: '#161618', border: '1px solid rgba(255,255,255,0.07)' }}>
+                                        <div style={{ fontSize: 50, marginBottom: 12 }}>😴</div>
+                                        <div className="text-lg font-bold text-textMuted mb-2">Full Rest Day</div>
+                                        <div className="text-xs text-textMuted/50">No training · No cardio · Sleep 8+ hours</div>
+                                        <div className="text-xs text-textMuted/30 mt-2 italic">Recovery is where the muscle is actually built.</div>
+                                    </div>
+                                )}
+
+                                {/* EXERCISES */}
+                                {!currentDay.rest && (
+                                    <div className="space-y-2">
+                                        {currentDay.exercises.map((ex, i) => {
+                                            const isExpanded = expandedEx === i;
+                                            const tagColor = TAG_COLORS[ex.tag] || '#555';
+                                            return (
+                                                <div key={i} className="rounded-2xl overflow-hidden transition-all" style={{ background: isExpanded ? '#1a1a1e' : '#161618', border: `1px solid ${isExpanded ? currentDay.color + '44' : 'rgba(255,255,255,0.07)'}` }}>
+                                                    <div onClick={() => setExpandedEx(isExpanded ? null : i)} className="flex items-center gap-3 p-4 cursor-pointer">
+                                                        <div className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-xs font-bold text-white" style={{ background: currentDay.color }}>{i + 1}</div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="text-sm font-semibold text-textMain leading-tight truncate">{ex.name}</div>
+                                                            {ex.tag && (
+                                                                <span className="text-[9px] font-bold uppercase tracking-wider mt-0.5 inline-block px-1.5 py-0.5 rounded" style={{ background: tagColor + '22', color: tagColor, border: `1px solid ${tagColor}44` }}>{ex.tag}</span>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex gap-3 shrink-0">
+                                                            <div className="text-center">
+                                                                <div className="text-base font-bold leading-none" style={{ color: currentDay.color }}>{ex.sets}</div>
+                                                                <div className="text-[9px] text-textMuted uppercase tracking-wider mt-0.5">sets</div>
+                                                            </div>
+                                                            <div className="text-center">
+                                                                <div className="text-base font-bold text-textMain leading-none">{ex.reps}</div>
+                                                                <div className="text-[9px] text-textMuted uppercase tracking-wider mt-0.5">reps</div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center gap-1.5 shrink-0">
+                                                            <button onClick={(e) => { e.stopPropagation(); openAddModal(ex, currentDay.color); }}
+                                                                className="w-8 h-8 rounded-lg flex items-center justify-center transition-all active:scale-95"
+                                                                style={{ background: '#3b82f615', border: '1px solid #3b82f640', color: '#3b82f6' }}
+                                                                title="Add to workout">
+                                                                <i className="ph-bold ph-plus text-sm"></i>
+                                                            </button>
+                                                            <div className="text-textMuted/30 text-[10px] transition-transform duration-200" style={{ transform: isExpanded ? 'rotate(180deg)' : 'none' }}>▼</div>
+                                                        </div>
+                                                    </div>
+                                                    {isExpanded && (
+                                                        <div className="px-4 pb-4 border-t border-white/5">
+                                                            <div className="grid grid-cols-2 gap-2 mt-3">
+                                                                {[["⚖️ Weight Method", ex.weightMethod, true], ["⏱ Tempo", ex.tempo, false], ["😮‍💨 Rest", ex.rest, false]].map(([label, value, full]) => (
+                                                                    <div key={label} className="rounded-xl p-3" style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.06)', gridColumn: full ? '1 / -1' : 'auto' }}>
+                                                                        <div className="text-[9px] font-bold uppercase tracking-wider text-textMuted/50 mb-1.5">{label}</div>
+                                                                        <div className="text-xs text-textMain/75 leading-relaxed">{value}</div>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                            <div className="mt-2 rounded-xl p-3" style={{ background: currentDay.color + '0d', border: `1px solid ${currentDay.color}2a` }}>
+                                                                <div className="text-[9px] font-bold uppercase tracking-wider mb-1.5" style={{ color: currentDay.color }}>📌 Key Note</div>
+                                                                <div className="text-xs leading-relaxed" style={{ color: '#ccc' }}>{ex.notes}</div>
+                                                            </div>
+                                                            <button onClick={() => openAddModal(ex, currentDay.color)}
+                                                                className="mt-3 w-full py-2.5 rounded-xl text-sm font-bold transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                                                                style={{ background: '#3b82f615', border: '1px solid #3b82f640', color: '#3b82f6' }}>
+                                                                <i className="ph-bold ph-plus-circle"></i> Add to Today's Workout
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </>
+                        )}
+
+                        {activeTab === "rules" && (
+                            <div>
+                                <div className="mb-4">
+                                    <div className="text-xl font-bold text-textMain mb-1">Weight & Rep Rules</div>
+                                    <div className="text-xs text-textMuted">CBum's exact loading philosophy — applies to every exercise in the split</div>
+                                </div>
+                                <div className="space-y-2">
+                                    {RULES.map((r, i) => (
+                                        <div key={i} className="rounded-xl p-4 flex gap-3" style={{ background: i % 2 === 0 ? '#161618' : '#131315', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                            <div className="w-7 h-7 rounded-full shrink-0 flex items-center justify-center text-xs font-bold" style={{ background: '#C0392B22', border: '1px solid #C0392B44', color: '#C0392B' }}>{i + 1}</div>
+                                            <div>
+                                                <div className="text-[11px] font-bold uppercase tracking-wide mb-1" style={{ color: '#C0392B' }}>{r.rule}</div>
+                                                <div className="text-xs text-textMain/70 leading-relaxed">{r.method}</div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+                // --- NEW COMPONENTS ---
+
+        const ProfileSelector = ({ onSelect }) => (
+            <div className="fade-in pt-10 px-6">
+                <h2 className="text-3xl font-teko font-bold text-textMain mb-1 text-center uppercase tracking-wide">Profiles</h2>
+                <p className="text-[10px] text-textMuted uppercase tracking-widest mb-10 text-center">Select athlete</p>
+                <div className="space-y-5 stagger-children">
+                    {Object.entries(USER_DATA).map(([key, data]) => (
+                        <div 
+                            key={key} 
+                            onClick={() => onSelect(key)}
+                            className="glass-panel rounded-3xl h-36 flex items-center justify-center cursor-pointer hover:bg-white/[0.04] active:scale-[0.98] transition-all duration-300 group relative overflow-hidden slide-up"
+                            style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.3)' }}
+                        >
+                            <div className={`absolute right-[-20px] top-[-20px] w-40 h-40 rounded-full blur-3xl opacity-15 group-hover:opacity-30 transition-opacity duration-500 ${data.bg}`}></div>
+                            <div className={`absolute left-[-20px] bottom-[-20px] w-32 h-32 rounded-full blur-3xl opacity-10 group-hover:opacity-20 transition-opacity duration-500 ${data.bg}`}></div>
+                            <div className="relative z-10 flex flex-col items-center gap-1">
+                                <h3 className={`text-5xl font-teko font-bold uppercase tracking-wide ${data.color}`}>{data.name}</h3>
+                                <div className={`h-0.5 w-8 rounded-full ${data.bg} opacity-60 group-hover:w-16 transition-all duration-500`}></div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+
+        const ProfileStats = ({ userKey, allHistory, onBack }) => {
+            const staticData = USER_DATA[userKey];
+            
+            // 1. Get Live Data from Firebase (if exists), fallback to static
+            const profileData = allHistory?.profiles?.[userKey] || {};
+            const height = profileData.height || staticData.height;
+            const dob = profileData.dob || staticData.dob; // In case we want to edit DOB later
+
+            const [showWeightChart, setShowWeightChart] = useState(false);
+            const [showBMIChart, setShowBMIChart] = useState(false);
+            
+            // Local state for editing
+            const [localHeight, setLocalHeight] = useState(height);
+            const [isEditingHeight, setIsEditingHeight] = useState(false);
+            
+            // Sync local state when database updates (e.g., initial load)
+            useEffect(() => {
+                setLocalHeight(height);
+            }, [height]);
+
+            // Save to Firebase
+            const saveHeight = () => {
+                if (window.db) {
+                    window.update(window.ref(window.db, `profiles/${userKey}`), { 
+                        height: localHeight 
+                    }).then(() => {
+                        setIsEditingHeight(false);
+                    }).catch(console.error);
+                }
+            };
+            
+            // Calculate Stats
+            const age = calculateAge(dob);
+            
+            // Get Weight History
+            const weightHistory = useMemo(() => {
+                if(!allHistory) return [];
+                const history = [];
+                Object.entries(allHistory).forEach(([date, dayData]) => {
+                    const bw = dayData[userKey]?.bodyWeight;
+                    if(bw) history.push({ date, value: bw });
+                });
+                return history.sort((a,b) => new Date(a.date) - new Date(b.date));
+            }, [allHistory, userKey]);
+
+            // Current Weight (Last recorded)
+            const currentWeight = weightHistory.length > 0 ? parseFloat(weightHistory[weightHistory.length - 1].value) : 0;
+            
+            // BMI using LIVE height
+            // We use 'height' (from DB) for display/calc, unless editing
+            const displayHeight = isEditingHeight ? localHeight : height;
+            const bmi = currentWeight > 0 ? (currentWeight / ((displayHeight/100) ** 2)).toFixed(1) : "--";
+            
+            // Generate BMI History for Chart
+            const bmiHistory = weightHistory.map(w => ({
+                date: w.date,
+                value: (parseFloat(w.value) / ((displayHeight/100) ** 2)).toFixed(1)
+            }));
+
+            // Calculate Focus Stats (Splits per Month)
+            const focusStats = useMemo(() => {
+                if (!allHistory) return [];
+                const stats = {};
+
+                // Filter valid date keys to avoid 'profiles' etc.
+                const validDates = Object.keys(allHistory).filter(k => k.match(/^\d{4}-\d{2}-\d{2}$/));
+
+                validDates.forEach(date => {
+                    const dayData = allHistory[date];
+                    const uData = dayData[userKey];
+
+                    // Count only if user has exercises (completed workout)
+                    if (uData && uData.exercises && uData.exercises.length > 0) {
+                        const dateObj = new Date(date);
+                        const monthKey = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
+                        const monthLabel = dateObj.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                        
+                        // Determine Splits (can be comma-separated string)
+                        let rawSplit = dayData.split || uData.split || "Unknown";
+                        if(rawSplit === "Rest") return; 
+
+                        if (!stats[monthKey]) {
+                            stats[monthKey] = { label: monthLabel, counts: {}, total: 0 };
+                        }
+                        
+                        // Split into individual components and count
+                        rawSplit.split(', ').forEach(split => {
+                            stats[monthKey].counts[split] = (stats[monthKey].counts[split] || 0) + 1;
+                        });
+                        stats[monthKey].total += 1;
+                    }
+                });
+
+                return Object.entries(stats)
+                    .sort((a, b) => b[0].localeCompare(a[0]))
+                    .map(([key, val]) => val);
+            }, [allHistory, userKey]);
+
+            return (
+                <div className="fade-in pt-4 px-5 pb-10">
+                    <button onClick={onBack} className="mb-6 flex items-center gap-2 text-textMuted hover:text-white">
+                        <i className="ph-bold ph-arrow-left"></i> Back to profiles
+                    </button>
+                    
+                    <div className="mb-8">
+                        <h1 className={`text-4xl font-teko font-bold uppercase ${staticData.color}`}>{staticData.name}</h1>
+                        <p className="text-sm text-textMuted font-mono uppercase tracking-widest">Born: {dob}</p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        {/* Age Card */}
+                        <div className="glass-panel rounded-3xl p-5 flex flex-col justify-between h-40">
+                            <div className="text-textMuted"><i className="ph-duotone ph-cake text-2xl"></i></div>
+                            <div>
+                                <span className="text-4xl font-bold text-textMain">{age}</span>
+                                <span className="text-xs text-textMuted font-bold uppercase tracking-wider block">Years Old</span>
+                            </div>
+                        </div>
+
+                        {/* Height Card (Editable) */}
+                        <div className="glass-panel rounded-3xl p-5 flex flex-col justify-between h-40 relative group">
+                            <button 
+                                onClick={() => {
+                                    if (isEditingHeight) {
+                                        saveHeight();
+                                    } else {
+                                        setIsEditingHeight(true);
+                                    }
+                                }}
+                                className={`absolute top-4 right-4 p-2 rounded-full transition-colors ${isEditingHeight ? 'bg-secondary text-white shadow-neon-green' : 'text-textMuted hover:text-white bg-white/5'}`}
+                            >
+                                <i className={`ph-bold ${isEditingHeight ? 'ph-check' : 'ph-pencil-simple'}`}></i>
+                            </button>
+                            
+                            <div className="text-textMuted"><i className="ph-duotone ph-ruler text-2xl"></i></div>
+                            <div>
+                                {isEditingHeight ? (
+                                    <input 
+                                        type="number" 
+                                        autoFocus
+                                        value={localHeight} 
+                                        onChange={(e) => setLocalHeight(e.target.value)} 
+                                        className="text-4xl font-bold text-textMain bg-transparent border-b border-white/20 w-24 p-0 focus:ring-0" 
+                                    />
+                                ) : (
+                                    <span className="text-4xl font-bold text-textMain">{height}</span>
+                                )}
+                                <span className="text-xs text-textMuted font-bold uppercase tracking-wider block">CM Height</span>
+                            </div>
+                        </div>
+
+                        {/* Weight Card - Clickable */}
+                        <div 
+                            onClick={() => setShowWeightChart(true)}
+                            className="glass-panel rounded-3xl p-5 flex flex-col justify-between h-40 col-span-2 cursor-pointer hover:bg-white/5 transition-colors relative overflow-hidden"
+                        >
+                            <div className={`absolute right-[-20px] top-[-20px] w-40 h-40 rounded-full blur-3xl opacity-10 ${staticData.bg}`}></div>
+                            <div className="flex justify-between items-start">
+                                <div className="text-textMuted"><i className="ph-duotone ph-scales text-2xl"></i></div>
+                                <i className="ph-bold ph-chart-line-up text-textMuted"></i>
+                            </div>
+                            <div>
+                                <span className="text-5xl font-bold text-textMain">{currentWeight || "--"}</span>
+                                <span className="text-sm text-textMuted font-bold uppercase tracking-wider ml-1">KG</span>
+                                <span className="text-xs text-textMuted font-bold uppercase tracking-wider block mt-1">Current Weight</span>
+                            </div>
+                        </div>
+
+                        {/* BMI Card - Clickable */}
+                        <div 
+                            onClick={() => setShowBMIChart(true)}
+                            className="glass-panel rounded-3xl p-5 flex flex-col justify-between h-40 col-span-2 cursor-pointer hover:bg-white/5 transition-colors relative overflow-hidden"
+                        >
+                            <div className="flex justify-between items-start">
+                                <div className="text-textMuted"><i className="ph-duotone ph-activity text-2xl"></i></div>
+                                <i className="ph-bold ph-chart-bar text-textMuted"></i>
+                            </div>
+                            <div>
+                                <span className={`text-5xl font-bold ${bmi > 25 ? 'text-orange-400' : bmi < 18.5 ? 'text-blue-400' : 'text-green-400'}`}>{bmi}</span>
+                                <span className="text-xs text-textMuted font-bold uppercase tracking-wider block mt-1">BMI Score</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Focus Stats Section */}
+                    <div className="mt-6">
+                        <h3 className="text-lg font-bold text-textMain mb-3 uppercase tracking-wider">Monthly Focus Breakdown</h3>
+                        <div className="space-y-3">
+                            {focusStats.map((stat, i) => (
+                                <div key={i} className="glass-panel rounded-2xl p-4">
+                                    <div className="flex justify-between items-end mb-3 border-b border-white/5 pb-2">
+                                        <span className="font-bold text-textMain text-lg leading-none">{stat.label}</span>
+                                        <span className="text-xs text-textMuted font-mono bg-white/5 px-2 py-1 rounded">{stat.total} Workouts</span>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        {Object.entries(stat.counts).map(([split, count]) => (
+                                            <div key={split} className="flex items-center gap-2 bg-surface border border-border px-3 py-1.5 rounded-lg">
+                                                <span className="text-xs font-bold text-textMuted uppercase tracking-wider">{split}</span>
+                                                <span className={`text-sm font-bold ${staticData.color}`}>{count}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                            {focusStats.length === 0 && (
+                                <div className="text-center text-textMuted text-sm py-4 italic">No workout history found.</div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Modals */}
+                    {showWeightChart && <ProgressChart data={weightHistory} color={staticData.color} type="Weight" onClose={() => setShowWeightChart(false)} />}
+                    {showBMIChart && <ProgressChart data={bmiHistory} color={staticData.color} type="BMI" onClose={() => setShowBMIChart(false)} />}
+                </div>
+            );
+        };
+
+        // --- APP LAYOUT ---
+        const Layout = () => {
+            const [view, setView] = useState("main"); // main, profiles, profile-detail
+            const [selectedProfile, setSelectedProfile] = useState(null);
+            const [scrollY, setScrollY] = useState(0); // Track scroll for minimizing stopwatch
+            
+            // STATE FOR DATE SELECTION
+            const [currentDate, setCurrentDate] = useState(getTodayDateString());
+
+            const [tab, setTab] = useState("raghendh");
+            const [isAuth, setIsAuth] = useState(false);
+            const [authError, setAuthError] = useState(null);
+            const [allHistory, setAllHistory] = useState(null);
+
+            // MODIFIED: Polling mechanism to ensure window.auth is ready before use
+            useEffect(() => {
+                let unsubscribeAuth = null;
+
+                const initApp = () => {
+                    if (window.auth && window.db) {
+                        unsubscribeAuth = window.auth.onAuthStateChanged((user) => {
+                            if (user) { 
+                                setIsAuth(true); 
+                                // Fetch History
+                                window.onValue(window.ref(window.db, '/'), (snapshot) => {
+                                    if (snapshot.exists()) {
+                                        const val = snapshot.val();
+                                        setAllHistory(val);
+                                    }
+                                });
+                            } 
+                            else { window.signInAnonymously(window.auth).catch(err => setAuthError(err)); }
+                        });
+                        return true;
+                    }
+                    return false;
+                };
+
+                // Check immediately, then poll if not ready
+                if (!initApp()) {
+                    const interval = setInterval(() => {
+                        if (initApp()) clearInterval(interval);
+                    }, 100);
+                    
+                    return () => {
+                        clearInterval(interval);
+                        if (unsubscribeAuth) unsubscribeAuth();
+                    };
+                }
+                
+                return () => {
+                    if (unsubscribeAuth) unsubscribeAuth();
+                };
+            }, []);
+
+            // --- HISTORY HANDLING (Fix for Mobile Back Button) ---
+            useEffect(() => {
+                // 1. Establish initial state so we don't exit immediately on first back press
+                window.history.replaceState({ view: 'main' }, '');
+
+                // 2. Listen for the browser/mobile back action
+                const handlePopState = (e) => {
+                    if (e.state && e.state.view) {
+                        // Restore the view from history
+                        setView(e.state.view);
+                        if (e.state.selectedProfile) setSelectedProfile(e.state.selectedProfile);
+                        else setSelectedProfile(null);
+                    } else {
+                        // Fallback to main if state is lost
+                        setView('main');
+                    }
+                };
+
+                window.addEventListener('popstate', handlePopState);
+                return () => window.removeEventListener('popstate', handlePopState);
+            }, []);
+
+            // --- WAKE LOCK (Prevent Screen Sleep) ---
+            useEffect(() => {
+                let wakeLock = null;
+
+                const requestWakeLock = async () => {
+                    if ('wakeLock' in navigator) {
+                        try {
+                            wakeLock = await navigator.wakeLock.request('screen');
+                            console.log('Screen Wake Lock is active');
+                        } catch (err) {
+                            console.warn(`Wake Lock error: ${err.name}, ${err.message}`);
+                        }
+                    }
+                };
+
+                // Request initial wake lock
+                requestWakeLock();
+
+                // Re-request when tab becomes visible again
+                const handleVisibilityChange = () => {
+                    if (document.visibilityState === 'visible') {
+                        requestWakeLock();
+                    }
+                };
+
+                document.addEventListener('visibilitychange', handleVisibilityChange);
+
+                return () => {
+                    document.removeEventListener('visibilitychange', handleVisibilityChange);
+                    if (wakeLock !== null) {
+                        wakeLock.release().catch(console.error);
+                    }
+                };
+            }, []);
+
+            // Scroll Handler
+            const handleScroll = (e) => {
+                setScrollY(e.currentTarget.scrollTop);
+            };
+
+            // Calculate Shrink Progress (0 to 1 over 150px scroll)
+            const shrinkProgress = Math.min(scrollY / 150, 1);
+
+            if (authError) return <SetupScreen error={authError} />;
+            if (!isAuth) return (
+                <div className="h-screen bg-bg flex flex-col items-center justify-center relative overflow-hidden">
+                    {/* Ambient blobs */}
+                    <div className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full bg-green-900/20 blur-[120px] pointer-events-none"></div>
+                    <div className="absolute bottom-1/4 right-1/4 w-64 h-64 rounded-full bg-emerald-900/10 blur-[120px] pointer-events-none"></div>
+                    
+                    <div className="relative z-10 flex flex-col items-center scale-in">
+                        {/* Logo container with ring */}
+                        <div className="relative mb-10">
+                            <div className="absolute inset-0 rounded-[2rem] bg-primary/20 blur-2xl scale-110"></div>
+                            <div className="relative w-28 h-28 rounded-[2rem] bg-surface border border-white/10 flex items-center justify-center pulse-ring-green">
+                                <span className="font-teko text-6xl font-bold text-white leading-none tracking-tight">DOD</span>
+                            </div>
+                        </div>
+                        <p className="text-textMuted text-xs uppercase tracking-[0.3em] mb-8 font-medium">Do or Die</p>
+                        {/* Animated loading bar */}
+                        <div className="relative h-0.5 w-40 bg-surfaceLight rounded-full overflow-hidden shimmer">
+                            <div className="absolute inset-y-0 left-0 w-1/2 bg-gradient-to-r from-transparent via-primary to-transparent animate-[shimmer_1.4s_ease-in-out_infinite]"></div>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            const themes = {
+                raghendh: { text: 'text-primary', bg: 'bg-primary', shadow: 'neon-green', gradient: 'from-green-500 to-emerald-500' },
+                devanandh: { text: 'text-secondary', bg: 'bg-secondary', shadow: 'neon-orange', gradient: 'from-orange-500 to-amber-500' }
+            };
+
+            const handleProfileSelect = (key) => {
+                setSelectedProfile(key);
+                setView('profile-detail');
+                // PUSH NEW STATE to history stack
+                window.history.pushState({ view: 'profile-detail', selectedProfile: key }, '');
+            };
+
+            return (
+                <div className="max-w-md mx-auto h-screen text-textMain relative overflow-hidden flex flex-col font-sans" style={{ background: '#0d0d0f' }}>
+                    {/* Ambient Background — subtle, dark */}
+                    <div className="absolute top-[-15%] left-[-15%] w-[60%] h-[50%] rounded-full bg-green-950/20 blur-[150px] pointer-events-none"></div>
+                    <div className="absolute bottom-[-10%] right-[-15%] w-[55%] h-[45%] rounded-full bg-blue-950/15 blur-[120px] pointer-events-none"></div>
+
+                    {/* Main Scrollable Content */}
+                    <main className="flex-1 overflow-y-auto no-scrollbar scroll-smooth px-5 pb-5" onScroll={handleScroll}>
+                        
+                        {/* Header (Always Visible) */}
+                        <div className="pt-6 pb-2">
+                            <div className="flex justify-between items-center mb-4">
+                                <div>
+                                    <h1 className="font-teko text-3xl font-bold leading-none tracking-wide text-white">DO OR DIE</h1>
+                                    <div className="relative inline-block">
+                                        <p className="text-[10px] font-bold text-textMuted uppercase tracking-widest flex items-center gap-1">
+                                            {currentDate === getTodayDateString() ? formatDatePretty() : formatDisplayDate(currentDate)}
+                                            <i className="ph-bold ph-caret-down text-[8px]"></i>
+                                        </p>
+                                        <input 
+                                            type="date" 
+                                            value={currentDate} 
+                                            onChange={(e) => setCurrentDate(e.target.value)} 
+                                            className="absolute inset-0 opacity-0 w-full h-full cursor-pointer z-10"
+                                        />
+                                    </div>
+                                </div>
+                                
+                                {/* Changed: User Icon acts as button to switch views */}
+                                <button 
+                                    onClick={() => {
+                                        if (view === 'main') {
+                                            setView('profiles');
+                                            window.history.pushState({ view: 'profiles' }, '');
+                                        } else {
+                                            setView('main');
+                                            window.history.pushState({ view: 'main' }, '');
+                                        }
+                                    }}
+                                    className={`w-9 h-9 rounded-full border flex items-center justify-center transition-all duration-300 ${view !== 'main' ? 'bg-textMain border-textMain text-bg scale-110' : 'bg-surface border-white/10 text-textMuted hover:border-white/20 hover:text-textMain'}`}
+                                >
+                                    {view === 'main' ? <i className="ph-bold ph-user"></i> : <i className="ph-bold ph-house"></i>}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* VIEW: MAIN DASHBOARD */}
+                        {view === 'main' && (
+                            <div className="tab-content">
+                                {/* Stopwatches (Only in main view) - Now pass shrinkProgress */}
+                                <div className="sticky top-0 z-40 py-2.5 border-b border-white/[0.05] mb-4 -mx-5 px-5 shadow-[0_4px_20px_rgba(0,0,0,0.5)] transition-all" style={{ background: '#0d0d0f' }}>
+                                    <div className="flex gap-3">
+                                        <StopwatchWidget label="Ragh" colorClass="text-primary" shadowClass="shadow-neon-green" progress={shrinkProgress} />
+                                        <StopwatchWidget label="Dev" colorClass="text-secondary" shadowClass="shadow-neon-orange" progress={shrinkProgress} />
+                                    </div>
+                                </div>
+
+                                {/* Tab Content */}
+                                {tab === 'raghendh' && <Dashboard userKey="raghendh" allHistory={allHistory} colorTheme={themes.raghendh} date={currentDate} />}
+                                {tab === 'devanandh' && <Dashboard userKey="devanandh" allHistory={allHistory} colorTheme={themes.devanandh} date={currentDate} />}
+                                {tab === 'history' && <Timeline historyData={allHistory} />}
+                                {tab === 'pr' && <PRWidget historyData={allHistory} />}
+                                {tab === 'program' && <ProgramWidget />}
+                            </div>
+                        )}
+
+                        {/* VIEW: PROFILE SELECTION */}
+                        {view === 'profiles' && <ProfileSelector onSelect={handleProfileSelect} />}
+
+                        {/* VIEW: PROFILE DETAILS */}
+                        {view === 'profile-detail' && selectedProfile && (
+                            <ProfileStats 
+                                userKey={selectedProfile} 
+                                allHistory={allHistory} 
+                                onBack={() => window.history.back()} 
+                            />
+                        )}
+
+                    </main>
+
+                    {/* Floating Island Navigation (Only in Main View) */}
+                    {view === 'main' && (
+                        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50">
+                            <nav className="nav-pill rounded-2xl px-2 py-2 flex items-center gap-1">
+                                {[
+                                    { id: 'raghendh', icon: 'ph-barbell', activeColor: 'bg-primary text-white nav-active-green' },
+                                    { id: 'devanandh', icon: 'ph-sneaker-move', activeColor: 'bg-secondary text-white nav-active-orange' },
+                                    { id: 'history', icon: 'ph-clock-counter-clockwise', activeColor: 'bg-textMain text-bg nav-active-white' },
+                                    { id: 'pr', icon: 'ph-trophy', activeColor: 'bg-textMain text-bg nav-active-white' },
+                                    { id: 'program', icon: 'ph-clipboard-text', activeColor: 'bg-textMain text-bg nav-active-white' }
+                                ].map(item => {
+                                    const isActive = tab === item.id;
+                                    return (
+                                        <button 
+                                            key={item.id} 
+                                            onClick={() => setTab(item.id)} 
+                                            className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 ${isActive ? item.activeColor : 'text-textMuted hover:bg-white/5 hover:text-textMain'}`}
+                                            style={{ transform: isActive ? 'scale(1.08)' : 'scale(1)' }}
+                                        >
+                                            <i className={`${isActive ? 'ph-fill' : 'ph-bold'} ${item.icon} text-xl`}></i>
+                                        </button>
+                                    );
+                                })}
+                            </nav>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<Layout />);
+
+        if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.protocol === 'http:')) {
+            window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js').catch(console.error); });
+        }
+    </script>
+</body>
+</html>
