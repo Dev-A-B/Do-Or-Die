@@ -1891,7 +1891,7 @@
                     }}>
                         <div style={{ maxWidth: 900, margin: "0 auto" }}>
                             <div style={{ fontSize: 11, letterSpacing: 4, color: "#C0392B", fontFamily: "Arial, sans-serif", marginBottom: 6, textTransform: "uppercase" }}>
-                               THE MASTER 8-DAY ROTATION SPLIT
+                                The Master · 8-Day Rotation Split
                             </div>
                             <h1 style={{ margin: 0, fontSize: 28, fontWeight: "bold", color: "#FFFFFF", letterSpacing: -0.5 }}>
                                 8-Day Workout Split
@@ -2496,6 +2496,41 @@
 
                 window.addEventListener('popstate', handlePopState);
                 return () => window.removeEventListener('popstate', handlePopState);
+            }, []);
+
+            // --- WAKE LOCK (Prevent Screen Sleep) ---
+            useEffect(() => {
+                let wakeLock = null;
+
+                const requestWakeLock = async () => {
+                    if ('wakeLock' in navigator) {
+                        try {
+                            wakeLock = await navigator.wakeLock.request('screen');
+                            console.log('Screen Wake Lock is active');
+                        } catch (err) {
+                            console.warn(`Wake Lock error: ${err.name}, ${err.message}`);
+                        }
+                    }
+                };
+
+                // Request initial wake lock
+                requestWakeLock();
+
+                // Re-request when tab becomes visible again
+                const handleVisibilityChange = () => {
+                    if (document.visibilityState === 'visible') {
+                        requestWakeLock();
+                    }
+                };
+
+                document.addEventListener('visibilitychange', handleVisibilityChange);
+
+                return () => {
+                    document.removeEventListener('visibilitychange', handleVisibilityChange);
+                    if (wakeLock !== null) {
+                        wakeLock.release().catch(console.error);
+                    }
+                };
             }, []);
 
             // Scroll Handler
