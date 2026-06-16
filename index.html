@@ -23,7 +23,7 @@
     
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, set, update, onValue, get, child } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { getDatabase, ref, set, update, onValue, get, child, push, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
         const firebaseConfig = {
@@ -46,6 +46,8 @@
         window.onValue = onValue;
         window.get = get;
         window.child = child;
+        window.push = push;
+        window.remove = remove;
         window.signInAnonymously = signInAnonymously;
     </script>
 
@@ -121,18 +123,6 @@
             color: #8a8a96;
         }
 
-        .muscle-chip {
-            display: inline-flex;
-            align-items: center;
-            padding: 3px 10px;
-            border-radius: 20px;
-            font-size: 11px;
-            font-weight: 600;
-            background: rgba(255,255,255,0.07);
-            color: #b0b0bc;
-            border: 1px solid rgba(255,255,255,0.08);
-        }
-
         .fade-in { animation: fadeIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) both; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(18px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
@@ -148,8 +138,6 @@
         .stagger-children > *:nth-child(4) { animation-delay: 180ms; }
         .stagger-children > *:nth-child(5) { animation-delay: 240ms; }
 
-        .progress-bar-fill { transition: width 1s cubic-bezier(0.4, 0, 0.2, 1); }
-
         @keyframes shimmer {
             0% { transform: translateX(-100%); }
             100% { transform: translateX(100%); }
@@ -161,9 +149,6 @@
             background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
             animation: shimmer 1.6s infinite;
         }
-
-        @keyframes spin-slow { to { transform: rotate(360deg); } }
-        .spin-slow { animation: spin-slow 2s linear infinite; }
 
         .nav-active-green { box-shadow: 0 0 16px rgba(34, 197, 94, 0.35), inset 0 1px 0 rgba(255,255,255,0.1); }
         .nav-active-orange { box-shadow: 0 0 16px rgba(249, 115, 22, 0.35), inset 0 1px 0 rgba(255,255,255,0.1); }
@@ -181,9 +166,6 @@
             100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
         }
         .pulse-ring-green { animation: pulseRing 2s ease-out infinite; }
-
-        .glow-green { box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.3), 0 4px 24px rgba(34, 197, 94, 0.12); }
-        .glow-orange { box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.3), 0 4px 24px rgba(249, 115, 22, 0.12); }
 
         @keyframes tickPulse {
             0%, 100% { opacity: 1; }
@@ -251,7 +233,7 @@
             devanandh: { name: "Devanandh", dob: "2004-01-12", height: 175, color: "text-secondary", bg: "bg-secondary", shadow: "shadow-neon-orange" }
         };
 
-        const DAYS = [
+        const CBUM_SPLIT = [
           { id: 1, label: "Day 1", focus: "Quads & Calves", emoji: "🦵", color: "#C0392B",
             exercises: [
               { name: "Leg Extensions", tag: "DROP SET", sets: "2", reps: "20", weightMethod: "Same weight both sets", tempo: "3s eccentric, squeeze at top", rest: "60–90 sec", notes: "Pre-exhaust before squats. Last set: drop weight 30% → rep to failure immediately with no rest." },
@@ -313,7 +295,52 @@
           { id: 8, label: "Day 8", focus: "REST", emoji: "😴", color: "#7F8C8D", rest: true },
         ];
 
-        const RULES = [
+        const BRO_SPLIT = [
+          { id: 1, label: "Day 1", focus: "Chest", emoji: "🦍", color: "#C0392B",
+            exercises: [
+                { name: "Barbell Bench Press", tag: "MAIN COMPOUND", sets: "4", reps: "8-10", weightMethod: "Increase weight each set", tempo: "Controlled eccentric, explosive push", rest: "2-3 min", notes: "Focus on stretching the chest." },
+                { name: "Incline Dumbbell Press", tag: "ANCHOR", sets: "3", reps: "10-12", weightMethod: "Same weight", tempo: "Slow and controlled", rest: "90 sec", notes: "Upper chest focus." },
+                { name: "Chest Flyes (Machine or DB)", tag: "PUMP", sets: "3", reps: "12-15", weightMethod: "Moderate weight", tempo: "Squeeze at peak", rest: "60 sec", notes: "Get a full stretch." },
+                { name: "Cable Crossovers", tag: "FINISHER", sets: "3", reps: "15", weightMethod: "Light weight", tempo: "Constant tension", rest: "60 sec", notes: "Cross hands at the bottom for inner chest." }
+            ]
+          },
+          { id: 2, label: "Day 2", focus: "Back", emoji: "🦅", color: "#2980B9",
+            exercises: [
+                { name: "Barbell Deadlift", tag: "MAIN COMPOUND", sets: "4", reps: "5-8", weightMethod: "Work up to a heavy set", tempo: "Explosive pull, controlled down", rest: "3 min", notes: "Keep lower back straight." },
+                { name: "Lat Pulldowns", tag: "BACK WIDTH", sets: "4", reps: "10-12", weightMethod: "Same weight", tempo: "Squeeze lats at bottom", rest: "90 sec", notes: "Wide grip." },
+                { name: "Barbell Rows", tag: "THICKNESS", sets: "3", reps: "8-10", weightMethod: "Moderate heavy", tempo: "Pull to lower stomach", rest: "90 sec", notes: "Torso parallel to ground." },
+                { name: "Face Pulls", tag: "POSTERIOR", sets: "3", reps: "15", weightMethod: "Light weight", tempo: "Squeeze rear delts", rest: "60 sec", notes: "Pull towards eyes." }
+            ]
+          },
+          { id: 3, label: "Day 3", focus: "Legs", emoji: "🦵", color: "#27AE60",
+            exercises: [
+                { name: "Barbell Squats", tag: "MAIN COMPOUND", sets: "4", reps: "8-10", weightMethod: "Ascending weight", tempo: "Deep as possible", rest: "3 min", notes: "Drive through heels." },
+                { name: "Leg Press", tag: "VOLUME", sets: "3", reps: "12-15", weightMethod: "Heavy", tempo: "Do not lock knees", rest: "2 min", notes: "Feet shoulder width." },
+                { name: "Lying Leg Curls", tag: "HAMSTRINGS", sets: "3", reps: "12", weightMethod: "Same weight", tempo: "Squeeze at top", rest: "90 sec", notes: "Isolate the hamstrings." },
+                { name: "Standing Calf Raises", tag: "CALVES", sets: "4", reps: "15-20", weightMethod: "Moderate", tempo: "Full stretch at bottom", rest: "60 sec", notes: "Pause at the bottom and top." }
+            ]
+          },
+          { id: 4, label: "Day 4", focus: "Shoulders", emoji: "⛰️", color: "#E67E22",
+            exercises: [
+                { name: "Overhead Press (Barbell or DB)", tag: "MAIN COMPOUND", sets: "4", reps: "8-10", weightMethod: "Heavy", tempo: "Controlled", rest: "2 min", notes: "Do not use excessive leg drive." },
+                { name: "Dumbbell Lateral Raises", tag: "WIDTH", sets: "4", reps: "15", weightMethod: "Light to moderate", tempo: "Lead with elbows", rest: "60 sec", notes: "Slight lean forward." },
+                { name: "Front Raises", tag: "ANTERIOR", sets: "3", reps: "12", weightMethod: "Moderate", tempo: "Controlled", rest: "60 sec", notes: "Use cable or DBs." },
+                { name: "Reverse Pec Deck", tag: "POSTERIOR", sets: "3", reps: "15", weightMethod: "Light", tempo: "Squeeze rear delts", rest: "60 sec", notes: "Don't use back." }
+            ]
+          },
+          { id: 5, label: "Day 5", focus: "Arms", emoji: "🦾", color: "#8E44AD",
+            exercises: [
+                { name: "Barbell Bicep Curls", tag: "BI OPENER", sets: "4", reps: "10-12", weightMethod: "Moderate heavy", tempo: "No swinging", rest: "90 sec", notes: "Keep elbows pinned." },
+                { name: "Tricep Pushdowns", tag: "TRI OPENER", sets: "4", reps: "12-15", weightMethod: "Moderate", tempo: "Squeeze at bottom", rest: "90 sec", notes: "Use rope or straight bar." },
+                { name: "Hammer Curls", tag: "THICKNESS", sets: "3", reps: "12", weightMethod: "Moderate", tempo: "Controlled", rest: "60 sec", notes: "Target brachialis." },
+                { name: "Skull Crushers", tag: "STRETCH", sets: "3", reps: "10-12", weightMethod: "Moderate", tempo: "Lower behind head", rest: "90 sec", notes: "Use EZ bar." }
+            ]
+          },
+          { id: 6, label: "Day 6", focus: "REST", emoji: "😴", color: "#7F8C8D", rest: true },
+          { id: 7, label: "Day 7", focus: "REST", emoji: "😴", color: "#7F8C8D", rest: true }
+        ];
+
+        const CBUM_RULES = [
           { rule: "Same weight across sets?", method: "YES — Hold same weight on ALL working sets until you hit the top of the rep range on every set with perfect form." },
           { rule: "When to increase weight?", method: "Only when you complete the top rep of the range on ALL sets with perfect form — not before." },
           { rule: "How much to increase?", method: "5–15 lbs per jump. Small consistent jumps beat big jumps with sloppy form." },
@@ -328,12 +355,274 @@
           { rule: "Rest — within superset/tri-set", method: "Zero rest between exercises. Move immediately. 90s–2 min between full rounds." },
         ];
 
+        const BRO_RULES = [
+            { rule: "Volume is King", method: "Hit the muscle group with high volume once a week. Annihilate it." },
+            { rule: "Mind-Muscle Connection", method: "Focus heavily on the contraction rather than just moving weight." },
+            { rule: "Progressive Overload", method: "Add weight or reps each week on the main compound lifts." }
+        ];
+
+        const DEFAULT_PROGRAMS = [
+            { id: "cbum_8", name: "The Master · 8-Day Rotation Split", subtitle: "3 Days On · 1 Day Off · Double Progression", days: CBUM_SPLIT, rules: CBUM_RULES },
+            { id: "bro_split", name: "Classic Bro Split", subtitle: "5 Days On · 2 Days Off · High Volume Isolation", days: BRO_SPLIT, rules: BRO_RULES }
+        ];
+
+        const SET_TYPE_OPTIONS = [
+            { id: "standard", label: "Standard", icon: "ph-list-numbers", desc: "Same weight all sets" },
+            { id: "dropset", label: "Drop Set", icon: "ph-arrow-fat-down", desc: "Reduce weight, no rest" },
+            { id: "superset", label: "Superset", icon: "ph-link", desc: "2 exercises, no rest" },
+            { id: "timed", label: "Timed", icon: "ph-timer", desc: "Log duration not weight" },
+            { id: "pyramid", label: "Pyramid", icon: "ph-triangle", desc: "Ascending reps/weight" },
+            { id: "failure", label: "To Failure", icon: "ph-fire", desc: "AMRAP (As many reps as possible)" }
+        ];
+
         const TAG_COLORS = {
           "MAIN COMPOUND": "#C0392B", "ANCHOR": "#C0392B", "DROP SET": "#E67E22",
           "DROP SET · ↓": "#E67E22", "PUMP": "#27AE60", "BURNOUT": "#8E44AD",
           "OPENER": "#2980B9", "FINISHER": "#16A085", "PYRAMID × 2": "#D35400",
           "SUPERSET": "#2471A3", "PRE-EXHAUST": "#1ABC9C", "BACK WIDTH": "#7D3C98",
           "TRI OPENER": "#C0392B", "BI OPENER": "#C0392B",
+        };
+
+        // --- SHARED ADD EXERCISE MODAL ---
+        const AddExerciseModal = ({ isOpen, onClose, exerciseData, targetUserDefault = "raghendh", date = null }) => {
+            const [addTarget, setAddTarget] = useState(targetUserDefault);
+            const [addSets, setAddSets] = useState(3);
+            const [addReps, setAddReps] = useState("");
+            const [addStatus, setAddStatus] = useState("");
+            const [addSetType, setAddSetType] = useState("standard");
+            const [addExercise2, setAddExercise2] = useState("");
+            const [dropWeights, setDropWeights] = useState(["", "", ""]);
+            const [pyramidRounds, setPyramidRounds] = useState(2);
+            
+            const effectiveDate = date || getTodayDateString();
+
+            useEffect(() => {
+                if (isOpen && exerciseData) {
+                    setAddSets(parseInt(exerciseData.sets) || 3);
+                    setAddReps(exerciseData.reps || "");
+                    setAddStatus("");
+                    setAddExercise2("");
+                    setDropWeights(["", "", ""]);
+                    const tag = exerciseData.tag || "";
+                    if (tag.includes("DROP SET") || tag.includes("↓")) setAddSetType("dropset");
+                    else if (tag.includes("SUPERSET")) setAddSetType("superset");
+                    else if (tag.includes("PYRAMID")) setAddSetType("pyramid");
+                    else if (tag.includes("BURNOUT")) setAddSetType("failure");
+                    else setAddSetType(exerciseData.setType || "standard");
+                }
+            }, [isOpen, exerciseData]);
+
+            if (!isOpen) return null;
+
+            const confirmAddExercise = async () => {
+                if (!window.db) return;
+                try {
+                    setAddStatus("Adding...");
+                    const snap = await window.get(window.child(window.ref(window.db), `${effectiveDate}/${addTarget}`));
+                    const existing = snap.val() || {};
+                    const currentExercises = existing.exercises || [];
+                    let newExercises = [];
+                    const repsVal = addReps.split('–')[0] || addReps.split('-')[0] || addReps;
+
+                    if (addSetType === "standard") {
+                        const newSets = Array.from({ length: addSets }, () => ({ weight: '', reps: repsVal, uni: false, type: 'standard' }));
+                        newExercises = [{ name: normalize(exerciseData.name || "NEW EXERCISE"), sets: newSets, setType: 'standard' }];
+                    } else if (addSetType === "timed") {
+                        const newSets = Array.from({ length: addSets }, () => ({ weight: '', reps: repsVal, duration: '', uni: false, type: 'timed' }));
+                        newExercises = [{ name: normalize(exerciseData.name || "NEW EXERCISE"), sets: newSets, setType: 'timed' }];
+                    } else if (addSetType === "failure") {
+                        const newSets = Array.from({ length: addSets }, () => ({ weight: '', reps: 'Fail', uni: false, type: 'failure' }));
+                        newExercises = [{ name: normalize(exerciseData.name || "NEW EXERCISE"), sets: newSets, setType: 'failure' }];
+                    } else if (addSetType === "dropset") {
+                        const sets = [];
+                        for (let r = 0; r < addSets; r++) {
+                            const numDrops = dropWeights.filter(w => w !== "").length || 3;
+                            for (let d = 0; d < numDrops; d++) {
+                                sets.push({ weight: dropWeights[d] || '', reps: repsVal, uni: false, type: 'dropset', dropIndex: d });
+                            }
+                        }
+                        newExercises = [{ name: normalize(exerciseData.name || "NEW EXERCISE"), sets, setType: "dropset" }];
+                    } else if (addSetType === "superset") {
+                        const sets1 = Array.from({ length: addSets }, () => ({ weight: '', reps: repsVal, uni: false, type: 'standard' }));
+                        const sets2 = Array.from({ length: addSets }, () => ({ weight: '', reps: repsVal, uni: false, type: 'standard' }));
+                        newExercises = [
+                            { name: normalize(exerciseData.name || "NEW EXERCISE"), sets: sets1, setType: "superset", supersetWith: normalize(addExercise2 || "EXERCISE 2") },
+                            { name: normalize(addExercise2 || "EXERCISE 2"), sets: sets2, setType: "superset", supersetWith: normalize(exerciseData.name || "NEW EXERCISE") }
+                        ];
+                    } else if (addSetType === "pyramid") {
+                        const pyramidSets = [];
+                        const repTargets = ["20", "15", "10", "Fail"];
+                        for (let r = 0; r < pyramidRounds; r++) {
+                            repTargets.forEach(rep => {
+                                pyramidSets.push({ weight: '', reps: rep, uni: false, type: 'pyramid' });
+                            });
+                        }
+                        newExercises = [{ name: normalize(exerciseData.name || "NEW EXERCISE"), sets: pyramidSets, setType: "pyramid" }];
+                    }
+
+                    const updated = [...currentExercises, ...newExercises];
+                    await window.update(window.ref(window.db, `${effectiveDate}/${addTarget}`), { exercises: updated });
+                    setAddStatus("Added ✓");
+                    setTimeout(() => { onClose(); setAddStatus(""); }, 900);
+                } catch (e) {
+                    setAddStatus("Error. Try again.");
+                }
+            };
+
+            const dayColor = exerciseData.dayColor || '#3b82f6';
+
+            return (
+                <div className="fixed inset-0 z-[100] flex items-end justify-center" style={{ background: 'rgba(0,0,0,0.78)' }} onClick={onClose}>
+                    <div className="w-full max-w-md rounded-t-3xl pb-10 overflow-y-auto max-h-[90vh]" style={{ background: '#161618', border: '1px solid rgba(255,255,255,0.1)', borderBottom: 'none', marginBottom: '80px' }} onClick={e => e.stopPropagation()}>
+                        <div className="sticky top-0 z-10 pt-6 px-6 pb-4" style={{ background: '#161618' }}>
+                            <div className="w-10 h-1 rounded-full bg-white/20 mx-auto mb-5"></div>
+                            <div className="flex items-start gap-3">
+                                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: dayColor + '22', border: `1px solid ${dayColor}44` }}>
+                                    <i className="ph-bold ph-barbell" style={{ color: dayColor }}></i>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <div className="text-[10px] font-bold text-textMuted uppercase tracking-widest mb-0.5">Add Exercise</div>
+                                    <div className="text-base font-bold text-textMain leading-tight break-words">{exerciseData.name || "Custom Exercise"}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="px-6 pb-2">
+                            {/* Set Type Selector */}
+                            <div className="mb-5">
+                                <label className="text-[10px] font-bold text-textMuted uppercase tracking-widest block mb-2">Set Type</label>
+                                <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                                    {SET_TYPE_OPTIONS.map(opt => (
+                                        <button key={opt.id} onClick={() => setAddSetType(opt.id)}
+                                            className="shrink-0 flex flex-col items-center gap-1 px-3 py-2.5 rounded-xl border transition-all"
+                                            style={{ background: addSetType === opt.id ? '#3b82f620' : '#1e1e22', borderColor: addSetType === opt.id ? '#3b82f6' : 'rgba(255,255,255,0.07)', color: addSetType === opt.id ? '#3b82f6' : '#8a8a96', minWidth: 72 }}>
+                                            <i className={`ph-bold ${opt.icon} text-base`}></i>
+                                            <span className="text-[10px] font-bold uppercase">{opt.label}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                                <div className="text-[10px] text-textMuted mt-1.5 ml-1">{SET_TYPE_OPTIONS.find(o => o.id === addSetType)?.desc}</div>
+                            </div>
+
+                            {/* Target user */}
+                            <div className="mb-4">
+                                <label className="text-[10px] font-bold text-textMuted uppercase tracking-widest block mb-2">Add To</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {['raghendh', 'devanandh'].map(u => (
+                                        <button key={u} onClick={() => setAddTarget(u)}
+                                            className={`py-2.5 rounded-xl text-sm font-bold transition-all border ${addTarget === u ? (u === 'raghendh' ? 'border-primary text-primary' : 'border-secondary text-secondary') : 'border-border text-textMuted'}`}
+                                            style={{ background: addTarget === u ? (u === 'raghendh' ? 'rgba(34,197,94,0.1)' : 'rgba(249,115,22,0.1)') : '#1e1e22' }}>
+                                            {u === 'raghendh' ? 'Raghendh' : 'Devanandh'}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* STANDARD / TIMED / FAILURE */}
+                            {(addSetType === "standard" || addSetType === "timed" || addSetType === "failure") && (
+                                <div className="grid grid-cols-2 gap-3 mb-5">
+                                    <div>
+                                        <label className="text-[10px] font-bold text-textMuted uppercase tracking-widest block mb-2">Sets</label>
+                                        <div className="flex items-center gap-2 rounded-xl border border-border p-2" style={{ background: '#1e1e22' }}>
+                                            <button onClick={() => setAddSets(s => Math.max(1, s - 1))} className="w-8 h-8 rounded-lg flex items-center justify-center text-textMuted hover:text-textMain transition-colors" style={{ background: '#161618' }}><i className="ph-bold ph-minus text-sm"></i></button>
+                                            <span className="flex-1 text-center font-teko text-2xl font-bold text-textMain">{addSets}</span>
+                                            <button onClick={() => setAddSets(s => Math.min(10, s + 1))} className="w-8 h-8 rounded-lg flex items-center justify-center text-textMuted hover:text-textMain transition-colors" style={{ background: '#161618' }}><i className="ph-bold ph-plus text-sm"></i></button>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-bold text-textMuted uppercase tracking-widest block mb-2">
+                                            {addSetType === "timed" ? "Duration (sec)" : "Target Reps"}
+                                        </label>
+                                        <input type="text" disabled={addSetType === 'failure'} value={addSetType === 'failure' ? 'Failure' : addReps} onChange={e => setAddReps(e.target.value)} placeholder={addSetType === "timed" ? "e.g. 30" : (exerciseData.reps || "e.g. 8-10")} className={`w-full rounded-xl px-3 py-2.5 text-sm font-medium text-textMain placeholder-textMuted/40 focus:ring-0 border border-border ${addSetType === 'failure' ? 'opacity-50 cursor-not-allowed' : ''}`} style={{ background: '#1e1e22' }} />
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* DROP SET */}
+                            {addSetType === "dropset" && (
+                                <div className="mb-5">
+                                    <div className="grid grid-cols-2 gap-3 mb-4">
+                                        <div>
+                                            <label className="text-[10px] font-bold text-textMuted uppercase tracking-widest block mb-2">Rounds</label>
+                                            <div className="flex items-center gap-2 rounded-xl border border-border p-2" style={{ background: '#1e1e22' }}>
+                                                <button onClick={() => setAddSets(s => Math.max(1, s - 1))} className="w-8 h-8 rounded-lg flex items-center justify-center text-textMuted" style={{ background: '#161618' }}><i className="ph-bold ph-minus text-sm"></i></button>
+                                                <span className="flex-1 text-center font-teko text-2xl font-bold text-textMain">{addSets}</span>
+                                                <button onClick={() => setAddSets(s => Math.min(5, s + 1))} className="w-8 h-8 rounded-lg flex items-center justify-center text-textMuted" style={{ background: '#161618' }}><i className="ph-bold ph-plus text-sm"></i></button>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-bold text-textMuted uppercase tracking-widest block mb-2">Target Reps</label>
+                                            <input type="text" value={addReps} onChange={e => setAddReps(e.target.value)} placeholder={exerciseData.reps || "e.g. 8-10"} className="w-full rounded-xl px-3 py-2.5 text-sm font-medium text-textMain placeholder-textMuted/40 focus:ring-0 border border-border" style={{ background: '#1e1e22' }} />
+                                        </div>
+                                    </div>
+                                    <label className="text-[10px] font-bold text-textMuted uppercase tracking-widest block mb-2">Drop Weights (kg) — optional</label>
+                                    <div className="flex gap-2">
+                                        {dropWeights.map((w, i) => (
+                                            <div key={i} className="flex-1">
+                                                <div className="text-[9px] text-textMuted text-center mb-1">Drop {i + 1}</div>
+                                                <input type="number" value={w} onChange={e => { const d = [...dropWeights]; d[i] = e.target.value; setDropWeights(d); }} placeholder="kg" className="w-full rounded-lg px-2 py-2 text-sm font-bold text-center text-textMain border border-border focus:ring-0" style={{ background: '#1e1e22' }} />
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="mt-2 text-[10px] text-textMuted/60 text-center">Each drop = reduce weight, continue immediately to failure</div>
+                                </div>
+                            )}
+
+                            {/* SUPERSET */}
+                            {addSetType === "superset" && (
+                                <div className="mb-5">
+                                    <div className="grid grid-cols-2 gap-3 mb-4">
+                                        <div>
+                                            <label className="text-[10px] font-bold text-textMuted uppercase tracking-widest block mb-2">Sets</label>
+                                            <div className="flex items-center gap-2 rounded-xl border border-border p-2" style={{ background: '#1e1e22' }}>
+                                                <button onClick={() => setAddSets(s => Math.max(1, s - 1))} className="w-8 h-8 rounded-lg flex items-center justify-center text-textMuted" style={{ background: '#161618' }}><i className="ph-bold ph-minus text-sm"></i></button>
+                                                <span className="flex-1 text-center font-teko text-2xl font-bold text-textMain">{addSets}</span>
+                                                <button onClick={() => setAddSets(s => Math.min(10, s + 1))} className="w-8 h-8 rounded-lg flex items-center justify-center text-textMuted" style={{ background: '#161618' }}><i className="ph-bold ph-plus text-sm"></i></button>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-bold text-textMuted uppercase tracking-widest block mb-2">Reps Each</label>
+                                            <input type="text" value={addReps} onChange={e => setAddReps(e.target.value)} placeholder={exerciseData.reps || "10-12"} className="w-full rounded-xl px-3 py-2.5 text-sm font-medium text-textMain placeholder-textMuted/40 focus:ring-0 border border-border" style={{ background: '#1e1e22' }} />
+                                        </div>
+                                    </div>
+                                    <label className="text-[10px] font-bold text-textMuted uppercase tracking-widest block mb-2">Exercise 1</label>
+                                    <div className="rounded-xl px-3 py-2.5 mb-3 border border-border text-sm font-bold text-textMain" style={{ background: '#111' }}>{exerciseData.name || "Custom Exercise"}</div>
+                                    <label className="text-[10px] font-bold text-textMuted uppercase tracking-widest block mb-2">Exercise 2 (paired)</label>
+                                    <input type="text" value={addExercise2} onChange={e => setAddExercise2(e.target.value.toUpperCase())} placeholder="e.g. MACHINE CHEST FLYES" className="w-full rounded-xl px-3 py-2.5 text-sm font-medium text-textMain placeholder-textMuted/40 focus:ring-0 border border-border uppercase" style={{ background: '#1e1e22' }} />
+                                    <div className="mt-2 text-[10px] text-textMuted/60 text-center">Both exercises added. Zero rest between them.</div>
+                                </div>
+                            )}
+
+                            {/* PYRAMID */}
+                            {addSetType === "pyramid" && (
+                                <div className="mb-5">
+                                    <label className="text-[10px] font-bold text-textMuted uppercase tracking-widest block mb-2">Rounds</label>
+                                    <div className="flex items-center gap-2 rounded-xl border border-border p-2 mb-3" style={{ background: '#1e1e22', maxWidth: 140 }}>
+                                        <button onClick={() => setPyramidRounds(r => Math.max(1, r - 1))} className="w-8 h-8 rounded-lg flex items-center justify-center text-textMuted" style={{ background: '#161618' }}><i className="ph-bold ph-minus text-sm"></i></button>
+                                        <span className="flex-1 text-center font-teko text-2xl font-bold text-textMain">{pyramidRounds}</span>
+                                        <button onClick={() => setPyramidRounds(r => Math.min(3, r + 1))} className="w-8 h-8 rounded-lg flex items-center justify-center text-textMuted" style={{ background: '#161618' }}><i className="ph-bold ph-plus text-sm"></i></button>
+                                    </div>
+                                    <div className="rounded-xl p-3 border border-white/5" style={{ background: 'rgba(0,0,0,0.3)' }}>
+                                        <div className="text-[10px] font-bold text-textMuted uppercase tracking-wider mb-2">Generated Sets ({pyramidRounds * 4} total)</div>
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {Array.from({ length: pyramidRounds }).map((_, r) =>
+                                                ["×20", "×15", "×10", "×fail"].map((rep, i) => (
+                                                    <span key={`${r}-${i}`} className="text-[10px] font-mono px-2 py-1 rounded" style={{ background: '#1e1e22', color: '#3b82f6', border: '1px solid #3b82f620' }}>Set {r * 4 + i + 1} {rep}</span>
+                                                ))
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="mt-2 text-[10px] text-textMuted/60 text-center">30 sec rest between sets · 2 min between rounds</div>
+                                </div>
+                            )}
+
+                            <button onClick={confirmAddExercise} disabled={addStatus === "Adding..."} className="w-full py-4 rounded-2xl text-white font-bold text-sm tracking-wide transition-all active:scale-[0.98]" style={{ background: '#3b82f6', boxShadow: '0 8px 24px rgba(59,130,246,0.35)' }}>
+                                {addStatus || "Add to Today's Workout"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
         };
 
         // --- CHART COMPONENT ---
@@ -596,11 +885,28 @@
                 else if (prType === 'unilateral' && currentPRs.unilateral === 0 && currentPRs.bilateral > 0) setPrType('bilateral');
             }, [currentPRs, prType]);
 
-            const addSet = () => updateExercise(exIndex, { ...exercise, sets: [...(exercise.sets || []), { weight: '', reps: '', uni: false }] });
+            const setType = exercise.setType || 'standard';
+
+            const addSet = () => {
+                let newSetObj = { weight: '', reps: '', uni: false, type: setType };
+                if(setType === 'timed') { newSetObj.duration = ''; newSetObj.reps = ''; }
+                if(setType === 'failure') newSetObj.reps = 'Fail';
+                updateExercise(exIndex, { ...exercise, sets: [...(exercise.sets || []), newSetObj] });
+            }
             const updateSet = (sIndex, field, value) => { const newSets = [...exercise.sets]; newSets[sIndex][field] = value; updateExercise(exIndex, { ...exercise, sets: newSets }); };
             const removeSet = (sIndex) => updateExercise(exIndex, { ...exercise, sets: exercise.sets.filter((_, i) => i !== sIndex) });
             const handleNameSelect = (name) => { updateExercise(exIndex, { ...exercise, name: name }); setShowSuggestions(false); };
             const handleBlurName = () => { setTimeout(() => setShowSuggestions(false), 200); };
+            const changeSetType = (e) => {
+                const newType = e.target.value;
+                const newSets = (exercise.sets || []).map(s => {
+                    const updated = {...s, type: newType};
+                    if(newType === 'timed') { updated.reps = ''; updated.duration = s.duration || ''; }
+                    if(newType === 'failure') updated.reps = 'Fail';
+                    return updated;
+                });
+                updateExercise(exIndex, { ...exercise, setType: newType, sets: newSets });
+            };
 
             if (!isExpanded) {
                 return (
@@ -610,7 +916,10 @@
                                 <span className="font-teko text-lg font-bold">{exIndex + 1}</span>
                             </div>
                             <div>
-                                <h3 className="text-textMain font-semibold text-[15px] leading-tight uppercase tracking-wide">{exercise.name || "NEW EXERCISE"}</h3>
+                                <h3 className="text-textMain font-semibold text-[15px] leading-tight uppercase tracking-wide flex items-center gap-2">
+                                    {exercise.name || "NEW EXERCISE"}
+                                    {setType !== 'standard' && <span className="text-[9px] bg-white/10 px-1.5 py-0.5 rounded text-textMuted uppercase">{setType}</span>}
+                                </h3>
                                 <div className="flex items-center gap-2 mt-0.5">
                                     <span className={`text-[10px] font-bold uppercase tracking-wider ${colorTheme.text}`} style={{ background: 'rgba(255,255,255,0.05)', padding: '1px 6px', borderRadius: 4 }}>{exercise.sets?.length || 0} Sets</span>
                                     {exercise.remark && <i className="ph-fill ph-note text-textMuted text-xs opacity-60"></i>}
@@ -642,6 +951,9 @@
                     </div>
 
                     <div className="flex items-center gap-2 px-5 py-3 border-b border-border bg-black/20 overflow-x-auto no-scrollbar">
+                        <select value={setType} onChange={changeSetType} className="bg-surface text-textMuted text-xs font-bold uppercase border border-border rounded-lg px-2 py-1.5 focus:ring-0">
+                            {SET_TYPE_OPTIONS.map(opt => <option key={opt.id} value={opt.id}>{opt.label}</option>)}
+                        </select>
                         {hasPR && (
                             <button onClick={() => setShowPRCalc(!showPRCalc)} className={`text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors whitespace-nowrap ${showPRCalc ? 'bg-secondary text-white shadow-neon-green' : 'bg-surface text-textMuted hover:text-textMain'}`}>
                                 <i className="ph-bold ph-percent"></i> PR
@@ -652,9 +964,6 @@
                         </button>
                         <button onClick={() => setShowRemark(!showRemark)} className={`text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors whitespace-nowrap ${showRemark || exercise.remark ? 'bg-surfaceLight text-textMain border border-white/10' : 'bg-surface text-textMuted hover:text-textMain'}`}>
                             <i className="ph-bold ph-notebook"></i> Note
-                        </button>
-                        <button onClick={() => setShowPrevNote(!showPrevNote)} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ml-auto ${(previousSession && previousSession.remark) ? `${colorTheme.text} bg-white/5 border border-white/5` : 'text-textMuted bg-transparent opacity-50'}`} disabled={!previousSession}>
-                            <i className="ph-bold ph-clock-counter-clockwise"></i>
                         </button>
                     </div>
 
@@ -701,7 +1010,7 @@
                                                         const isPR = isPRBi || isPRUni;
                                                         return (
                                                             <div key={i} className={`flex justify-between items-center text-sm font-mono px-2 py-1.5 rounded ${isPR ? 'bg-primary/20 text-primary font-bold' : 'bg-white/5 text-textMain'}`}>
-                                                                <span className="flex items-center gap-2">{s.weight}kg x {s.reps}{isPR && <i className="ph-fill ph-trophy text-[10px]"></i>}</span>
+                                                                <span className="flex items-center gap-2">{s.weight}kg x {s.reps || s.duration}{isPR && <i className="ph-fill ph-trophy text-[10px]"></i>}</span>
                                                                 {s.uni && <span className={`text-[10px] uppercase border px-1 rounded ${isPR ? 'border-primary/50 text-primary' : 'text-textMuted border-white/20'}`}>Uni</span>}
                                                             </div>
                                                         )
@@ -710,24 +1019,11 @@
                                                 {session.remark && <div className="mt-2 text-[10px] text-textMuted italic pl-2 border-l-2 border-white/10">{session.remark}</div>}
                                             </div>
                                         ))}
-                                        {exerciseHistoryList.length > displayHistory.length && !showAllHistory && (
-                                            <button onClick={() => setShowAllHistory(true)} className="w-full py-2.5 mt-2 text-xs font-bold text-textMuted hover:text-white bg-white/5 rounded-xl transition-colors">Show All History ({exerciseHistoryList.length})</button>
-                                        )}
-                                        {showAllHistory && exerciseHistoryList.length > displayHistory.length && (
-                                            <button onClick={() => setShowAllHistory(false)} className="w-full py-2.5 mt-2 text-xs font-bold text-textMuted hover:text-white bg-white/5 rounded-xl transition-colors">Show Less</button>
-                                        )}
                                     </div>
                                 </>
                             ) : (
                                 <div className="p-4 text-sm text-textMuted italic">No previous history found.</div>
                             )}
-                        </div>
-                    )}
-
-                    {showPrevNote && previousSession && (
-                        <div className="p-4 bg-black/30 border-b border-border">
-                            <div className="text-xs font-bold text-textMuted mb-1 uppercase tracking-wider">Note from {previousSession.date}:</div>
-                            <div className="text-sm text-textMain italic pl-2 border-l-2 border-white/20">{previousSession.remark || "No note recorded."}</div>
                         </div>
                     )}
 
@@ -739,14 +1035,29 @@
 
                     <div className="p-4">
                         <div className="grid grid-cols-[30px_1fr_1fr_40px_30px] gap-2 mb-2 text-[10px] font-bold text-textMuted uppercase tracking-wider text-center items-center">
-                            <span>#</span><span>KG</span><span>Reps</span><span>Uni</span><span></span>
+                            <span>#</span>
+                            <span>KG</span>
+                            <span>{setType === 'timed' ? 'Secs' : 'Reps'}</span>
+                            <span>Uni</span>
+                            <span></span>
                         </div>
                         <div className="space-y-2">
                             {(exercise.sets || []).map((set, sIndex) => (
-                                <div key={sIndex} className="grid grid-cols-[30px_1fr_1fr_40px_30px] gap-2 items-center">
-                                    <div className="flex items-center justify-center h-10 rounded-lg bg-surface text-textMuted font-mono text-sm">{sIndex + 1}</div>
+                                <div key={sIndex} className="grid grid-cols-[30px_1fr_1fr_40px_30px] gap-2 items-center relative">
+                                    {setType === 'dropset' && sIndex > 0 && <div className="absolute left-[15px] -top-[12px] h-[12px] w-[2px] bg-secondary/50"></div>}
+                                    <div className="flex items-center justify-center h-10 rounded-lg bg-surface text-textMuted font-mono text-sm">
+                                        {setType === 'dropset' && set.dropIndex > 0 ? `D${set.dropIndex}` : sIndex + 1}
+                                    </div>
                                     <div className="h-10 relative"><input type="number" value={set.weight} onChange={(e) => updateSet(sIndex, 'weight', e.target.value)} className="w-full h-full rounded-lg glass-input text-center text-textMain font-teko text-xl focus:ring-0" placeholder="-" /></div>
-                                    <div className="h-10 relative"><input type="number" value={set.reps} onChange={(e) => updateSet(sIndex, 'reps', e.target.value)} className="w-full h-full rounded-lg glass-input text-center text-textMain font-teko text-xl focus:ring-0" placeholder="-" /></div>
+                                    
+                                    <div className="h-10 relative">
+                                        {setType === 'timed' ? (
+                                            <input type="number" value={set.duration || ''} onChange={(e) => updateSet(sIndex, 'duration', e.target.value)} className="w-full h-full rounded-lg glass-input text-center text-textMain font-teko text-xl focus:ring-0" placeholder="-" />
+                                        ) : (
+                                            <input type="text" disabled={setType === 'failure'} value={setType === 'failure' ? 'Fail' : set.reps} onChange={(e) => updateSet(sIndex, 'reps', e.target.value)} className={`w-full h-full rounded-lg glass-input text-center text-textMain font-teko text-xl focus:ring-0 ${setType === 'failure' ? 'opacity-50' : ''}`} placeholder="-" />
+                                        )}
+                                    </div>
+
                                     <button onClick={() => updateSet(sIndex, 'uni', !set.uni)} className={`h-10 rounded-lg flex items-center justify-center border transition-all ${set.uni ? 'bg-primary border-primary text-white shadow-neon-purple' : 'bg-surface border-border text-textMuted'}`}><span className="text-xs font-bold">U</span></button>
                                     <button onClick={() => removeSet(sIndex)} className="h-10 flex items-center justify-center text-textMuted hover:text-red-400 transition-colors"><i className="ph-bold ph-x"></i></button>
                                 </div>
@@ -766,6 +1077,7 @@
             const [exercises, setExercises] = useState([]);
             const [status, setStatus] = useState("");
             const [expandedIndex, setExpandedIndex] = useState(-1);
+            const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
             const suggestionList = useMemo(() => {
                 const historySet = new Set();
@@ -834,12 +1146,6 @@
                 } catch (e) { setStatus("Error"); }
             };
 
-            const handleAddExercise = () => {
-                const newEx = [...exercises, { name: "", sets: [{weight: '', reps: '', uni: false}] }];
-                setExercises(newEx);
-                setExpandedIndex(newEx.length - 1);
-                updatePersonalData({ exercises: newEx });
-            };
             const handleUpdateExercise = (index, data) => { const newEx = [...exercises]; newEx[index] = data; setExercises(newEx); updatePersonalData({ exercises: newEx }); };
             const handleDeleteExercise = (index) => { const newEx = exercises.filter((_, i) => i !== index); setExercises(newEx); setExpandedIndex(-1); updatePersonalData({ exercises: newEx }); };
 
@@ -884,10 +1190,12 @@
                         ))}
                     </div>
 
-                    <button onClick={handleAddExercise} className={`fixed bottom-[88px] right-5 w-14 h-14 rounded-2xl ${colorTheme.bg} flex items-center justify-center text-white hover:scale-110 active:scale-95 transition-all duration-200 z-40 border border-white/20`}
+                    <button onClick={() => setIsAddModalOpen(true)} className={`fixed bottom-[88px] right-5 w-14 h-14 rounded-2xl ${colorTheme.bg} flex items-center justify-center text-white hover:scale-110 active:scale-95 transition-all duration-200 z-40 border border-white/20`}
                         style={{ boxShadow: colorTheme.bg.includes('primary') ? '0 8px 24px rgba(34,197,94,0.4), 0 2px 8px rgba(34,197,94,0.3)' : '0 8px 24px rgba(249,115,22,0.4), 0 2px 8px rgba(249,115,22,0.3)' }}>
                         <i className="ph-bold ph-plus text-2xl"></i>
                     </button>
+
+                    <AddExerciseModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} exerciseData={{ name: "NEW EXERCISE", dayColor: colorTheme.text === 'text-primary' ? '#22c55e' : '#f97316' }} targetUserDefault={userKey} date={date} />
 
                     {status && (
                         <div className="fixed bottom-[88px] left-5 bg-surface/80 backdrop-blur-md border border-border text-textMain px-4 py-2 rounded-xl text-xs font-bold shadow-2xl flex items-center gap-2 fade-in z-50">
@@ -962,7 +1270,7 @@
                                                 <div className="flex flex-wrap gap-2">
                                                     {item.exercise.sets?.map((s, si) => (
                                                         <div key={si} className="bg-surface border border-border px-2 py-1 rounded text-xs font-mono text-textMain flex items-center gap-1">
-                                                            {s.weight}kg x {s.reps}{s.uni && <span className="text-[9px] text-textMuted uppercase border-l border-white/10 pl-1 ml-1">U</span>}
+                                                            {s.weight}kg x {s.reps || s.duration}{s.uni && <span className="text-[9px] text-textMuted uppercase border-l border-white/10 pl-1 ml-1">U</span>}
                                                         </div>
                                                     ))}
                                                 </div>
@@ -1006,11 +1314,14 @@
                                                                             const id = `${dateStr}-${u}-${i}`;
                                                                             return (
                                                                                 <div key={i}>
-                                                                                    <div className="text-xs font-bold text-textMain uppercase mb-1 truncate">{ex.name}</div>
+                                                                                    <div className="text-xs font-bold text-textMain uppercase mb-1 truncate">
+                                                                                        {ex.name}
+                                                                                        {ex.setType && ex.setType !== 'standard' && <span className="ml-1 text-[8px] bg-white/10 px-1 rounded text-textMuted uppercase">{ex.setType}</span>}
+                                                                                    </div>
                                                                                     <div className="space-y-1">
                                                                                         {(ex.sets || []).map((s, si) => (
                                                                                             <div key={si} className="text-xs font-mono text-textMuted flex justify-between items-center">
-                                                                                                <span>{s.weight}kg x {s.reps}{s.uni && <span className="ml-1 text-[9px] text-textMuted border border-white/20 px-1 rounded">U</span>}</span>
+                                                                                                <span>{s.weight}kg x {s.reps || s.duration}{s.uni && <span className="ml-1 text-[9px] text-textMuted border border-white/20 px-1 rounded">U</span>}</span>
                                                                                             </div>
                                                                                         ))}
                                                                                     </div>
@@ -1100,337 +1411,99 @@
             );
         };
 
-        const Catalog = ({ historyData }) => {
-            const [selectedSplit, setSelectedSplit] = useState("Push");
-            const splits = ["Push", "Pull", "Legs", "Quads", "Hamstrings", "Upper", "Lower", "Full Body", "Cardio", "Arms", "Abs", "Chest", "Shoulder","Back"];
-            const exercises = useMemo(() => {
-                const uniqueSet = new Set();
-                const displayList = [];
-                if(historyData) {
-                    Object.values(historyData).forEach(day => {
-                        const daySplit = day.split || day.raghendh?.split || day.devanandh?.split;
-                        if(daySplit && daySplit.split(', ').includes(selectedSplit)) {
-                            ['raghendh', 'devanandh'].forEach(u => {
-                                if(day[u]?.exercises) {
-                                    day[u].exercises.forEach(e => {
-                                        if(e.name) { const clean = normalize(e.name); if(!uniqueSet.has(clean)) { uniqueSet.add(clean); displayList.push(clean); } }
-                                    });
-                                }
-                            });
-                        }
-                    });
-                }
-                return displayList.sort();
-            }, [historyData, selectedSplit]);
-
-            return (
-                <div className="pb-24 pt-2 fade-in">
-                    <h2 className="text-xl font-bold text-textMain mb-4 px-2">Exercise Catalog</h2>
-                    <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 px-2 -mx-2 mb-4">
-                        {splits.map(s => <button key={s} onClick={() => setSelectedSplit(s)} className={`whitespace-nowrap px-4 py-2 rounded-xl text-xs font-bold border transition-all ${selectedSplit === s ? 'bg-textMain text-bg border-textMain' : 'bg-surface border-border text-textMuted hover:bg-surfaceLight'}`}>{s}</button>)}
-                    </div>
-                    <div className="glass-panel rounded-3xl p-1 min-h-[300px]">
-                        {exercises.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center h-64 text-textMuted opacity-50"><i className="ph-duotone ph-barbell text-4xl mb-2"></i><p className="text-sm">No exercises found</p></div>
-                        ) : (
-                            <div className="grid grid-cols-1 divide-y divide-white/5">
-                                {exercises.map((ex, i) => (
-                                    <div key={i} className="p-4 flex items-center gap-4 hover:bg-white/5 transition-colors first:rounded-t-3xl last:rounded-b-3xl">
-                                        <div className="w-8 h-8 rounded-lg bg-surface flex items-center justify-center text-primary"><i className="ph-fill ph-check-circle"></i></div>
-                                        <span className="text-sm font-medium text-textMain uppercase flex-1">{ex}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                </div>
-            );
-        };
-
-        // --- FIX 2: Persist activeDay across tab switches using module-level variable ---
         let _persistedProgramDay = 1;
 
-        const ProgramWidget = () => {
-            // FIX 2: Initialize from persisted value, update on change
+        const ProgramWidget = ({ userKey, allPrograms }) => {
+            const [programs, setPrograms] = useState(DEFAULT_PROGRAMS);
+            const [activeProgramId, setActiveProgramId] = useState("cbum_8");
+            
+            useEffect(() => {
+                if (window.db) {
+                    const unsub = window.onValue(window.ref(window.db, `programs/${userKey}`), (snap) => {
+                        if (snap.exists()) {
+                            const dbPrograms = Object.values(snap.val());
+                            // Merge defaults with custom
+                            const customIds = dbPrograms.map(p => p.id);
+                            const finalPrograms = [...DEFAULT_PROGRAMS.filter(p => !customIds.includes(p.id)), ...dbPrograms];
+                            setPrograms(finalPrograms);
+                        } else {
+                            setPrograms(DEFAULT_PROGRAMS);
+                        }
+                    });
+                    return () => unsub();
+                }
+            }, [userKey]);
+
+            const activeProgram = programs.find(p => p.id === activeProgramId) || programs[0];
+
             const [activeDay, _setActiveDay] = useState(_persistedProgramDay);
             const setActiveDay = (id) => { _persistedProgramDay = id; _setActiveDay(id); };
 
             const [expandedEx, setExpandedEx] = useState(null);
             const [activeTab, setActiveTab] = useState("split");
-            const [addModal, setAddModal] = useState(null);
-            const [addTarget, setAddTarget] = useState("raghendh");
-            const [addSets, setAddSets] = useState(3);
-            const [addReps, setAddReps] = useState("");
-            const [addStatus, setAddStatus] = useState("");
-            // FIX 3: Set type for advanced exercise modalities
-            const [addSetType, setAddSetType] = useState("standard"); // standard | dropset | superset | timed | pyramid
-            const [addExercise2, setAddExercise2] = useState(""); // for superset
-            // Drop set: weights per drop (array)
-            const [dropWeights, setDropWeights] = useState(["", "", ""]);
-            // Pyramid: auto from tag
-            const [pyramidRounds, setPyramidRounds] = useState(2);
+            const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+            const [addModalExData, setAddModalExData] = useState(null);
+            const [editStatus, setEditStatus] = useState("");
 
-            const currentDay = DAYS.find((d) => d.id === activeDay);
+            const currentDay = activeProgram.days.find((d) => d.id === activeDay) || activeProgram.days[0];
 
             const openAddModal = (ex, dayColor) => {
-                setAddModal({ ex, dayColor });
-                setAddTarget("raghendh");
-                setAddSets(parseInt(ex.sets) || 3);
-                setAddReps(ex.reps || "");
-                setAddStatus("");
-                setAddExercise2("");
-                setDropWeights(["", "", ""]);
-                // Auto-detect set type from tag
-                const tag = ex.tag || "";
-                if (tag.includes("DROP SET") || tag.includes("↓")) setAddSetType("dropset");
-                else if (tag.includes("SUPERSET")) setAddSetType("superset");
-                else if (tag.includes("PYRAMID")) setAddSetType("pyramid");
-                else if (tag.includes("BURNOUT")) { setAddSetType("standard"); }
-                else setAddSetType("standard");
+                setAddModalExData({ ...ex, dayColor });
+                setIsAddModalOpen(true);
             };
 
-            const confirmAddExercise = async () => {
-                if (!addModal || !window.db) return;
-                const today = getTodayDateString();
+            const handleSaveProgramEdit = async () => {
+                if (!window.db) return;
+                setEditStatus("Saving...");
                 try {
-                    setAddStatus("Adding...");
-                    const snap = await window.get(window.child(window.ref(window.db), `${today}/${addTarget}`));
-                    const existing = snap.val() || {};
-                    const currentExercises = existing.exercises || [];
-                    let newExercises = [];
-
-                    if (addSetType === "standard" || addSetType === "timed") {
-                        const repsVal = addReps.split('–')[0] || addReps.split('-')[0] || addReps;
-                        const newSets = Array.from({ length: addSets }, () => ({
-                            weight: '',
-                            reps: addSetType === "timed" ? addReps : repsVal,
-                            uni: false,
-                            ...(addSetType === "timed" ? { timed: true } : {})
-                        }));
-                        newExercises = [{ name: normalize(addModal.ex.name), sets: newSets }];
-                    } else if (addSetType === "dropset") {
-                        // Each drop is a set with a note marker
-                        const repsVal = addReps.split('–')[0] || addReps.split('-')[0] || addReps;
-                        const rounds = addSets;
-                        const sets = [];
-                        for (let r = 0; r < rounds; r++) {
-                            const numDrops = dropWeights.filter(w => w !== "").length || 3;
-                            for (let d = 0; d < numDrops; d++) {
-                                sets.push({ weight: dropWeights[d] || '', reps: repsVal, uni: false, drop: true, dropIndex: d });
-                            }
-                        }
-                        newExercises = [{ name: normalize(addModal.ex.name), sets, setType: "dropset" }];
-                    } else if (addSetType === "superset") {
-                        const repsVal = addReps.split('–')[0] || addReps.split('-')[0] || addReps;
-                        const sets1 = Array.from({ length: addSets }, () => ({ weight: '', reps: repsVal, uni: false }));
-                        const sets2 = Array.from({ length: addSets }, () => ({ weight: '', reps: repsVal, uni: false }));
-                        newExercises = [
-                            { name: normalize(addModal.ex.name), sets: sets1, setType: "superset", supersetWith: normalize(addExercise2 || "EXERCISE 2") },
-                            { name: normalize(addExercise2 || "EXERCISE 2"), sets: sets2, setType: "superset", supersetWith: normalize(addModal.ex.name) }
-                        ];
-                    } else if (addSetType === "pyramid") {
-                        // Ascending pyramid: sets at different rep targets
-                        const pyramidSets = [];
-                        // Standard CBum pyramid: 20/15/10/fail per round, 2 rounds
-                        const repTargets = ["20", "15", "10", "fail"];
-                        for (let r = 0; r < pyramidRounds; r++) {
-                            repTargets.forEach(rep => {
-                                pyramidSets.push({ weight: '', reps: rep, uni: false });
-                            });
-                        }
-                        newExercises = [{ name: normalize(addModal.ex.name), sets: pyramidSets, setType: "pyramid" }];
-                    }
-
-                    const updated = [...currentExercises, ...newExercises];
-                    await window.update(window.ref(window.db, `${today}/${addTarget}`), { exercises: updated });
-                    setAddStatus("Added ✓");
-                    setTimeout(() => { setAddModal(null); setAddStatus(""); }, 900);
+                    await window.update(window.ref(window.db, `programs/${userKey}/${activeProgram.id}`), activeProgram);
+                    setEditStatus("Saved ✓");
+                    setTimeout(() => setEditStatus(""), 2000);
                 } catch (e) {
-                    setAddStatus("Error. Try again.");
+                    setEditStatus("Error saving");
                 }
             };
 
-            const SET_TYPE_OPTIONS = [
-                { id: "standard", label: "Standard", icon: "ph-list-numbers", desc: "Same weight all sets" },
-                { id: "dropset", label: "Drop Set", icon: "ph-arrow-fat-down", desc: "Reduce weight, no rest" },
-                { id: "superset", label: "Superset", icon: "ph-link", desc: "2 exercises, no rest" },
-                { id: "timed", label: "Timed", icon: "ph-timer", desc: "Log duration not weight" },
-                { id: "pyramid", label: "Pyramid", icon: "ph-triangle", desc: "Ascending reps/weight" },
-            ];
+            const [editProgramData, setEditProgramData] = useState(null);
+
+            useEffect(() => {
+                if(activeTab === 'edit') setEditProgramData(JSON.parse(JSON.stringify(activeProgram)));
+            }, [activeTab, activeProgramId, activeProgram]);
+
+            const updateEditProgram = (field, value) => {
+                setEditProgramData(prev => ({...prev, [field]: value}));
+            };
+
+            const saveEditedProgram = async () => {
+                if (!window.db) return;
+                setEditStatus("Saving...");
+                try {
+                    await window.update(window.ref(window.db, `programs/${userKey}/${editProgramData.id}`), editProgramData);
+                    setEditStatus("Saved ✓");
+                    setTimeout(() => setEditStatus(""), 1500);
+                } catch (e) { setEditStatus("Error saving"); }
+            };
 
             return (
                 <div className="fade-in pb-24 pt-2">
-                    {/* --- FIX 3: Enhanced Add Modal --- */}
-                    {addModal && (
-                        <div className="fixed inset-0 z-[100] flex items-end justify-center" style={{ background: 'rgba(0,0,0,0.78)' }} onClick={() => setAddModal(null)}>
-                            <div className="w-full max-w-md rounded-t-3xl pb-10 overflow-y-auto max-h-[90vh]" style={{ background: '#161618', border: '1px solid rgba(255,255,255,0.1)', borderBottom: 'none', marginBottom: '80px' }} onClick={e => e.stopPropagation()}>
-                                <div className="sticky top-0 z-10 pt-6 px-6 pb-4" style={{ background: '#161618' }}>
-                                    <div className="w-10 h-1 rounded-full bg-white/20 mx-auto mb-5"></div>
-                                    <div className="flex items-start gap-3">
-                                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: addModal.dayColor + '22', border: `1px solid ${addModal.dayColor}44` }}>
-                                            <i className="ph-bold ph-barbell" style={{ color: addModal.dayColor }}></i>
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            {/* FIX 1 (in modal): Show full exercise name without truncation */}
-                                            <div className="text-[10px] font-bold text-textMuted uppercase tracking-widest mb-0.5">Add Exercise</div>
-                                            <div className="text-base font-bold text-textMain leading-tight break-words">{addModal.ex.name}</div>
-                                        </div>
-                                    </div>
-                                </div>
+                    <AddExerciseModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} exerciseData={addModalExData} targetUserDefault={userKey} />
 
-                                <div className="px-6 pb-2">
-                                    {/* Set Type Selector */}
-                                    <div className="mb-5">
-                                        <label className="text-[10px] font-bold text-textMuted uppercase tracking-widest block mb-2">Set Type</label>
-                                        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-                                            {SET_TYPE_OPTIONS.map(opt => (
-                                                <button key={opt.id} onClick={() => setAddSetType(opt.id)}
-                                                    className="shrink-0 flex flex-col items-center gap-1 px-3 py-2.5 rounded-xl border transition-all"
-                                                    style={{ background: addSetType === opt.id ? '#3b82f620' : '#1e1e22', borderColor: addSetType === opt.id ? '#3b82f6' : 'rgba(255,255,255,0.07)', color: addSetType === opt.id ? '#3b82f6' : '#8a8a96', minWidth: 72 }}>
-                                                    <i className={`ph-bold ${opt.icon} text-base`}></i>
-                                                    <span className="text-[10px] font-bold uppercase">{opt.label}</span>
-                                                </button>
-                                            ))}
-                                        </div>
-                                        <div className="text-[10px] text-textMuted mt-1.5 ml-1">{SET_TYPE_OPTIONS.find(o => o.id === addSetType)?.desc}</div>
-                                    </div>
-
-                                    {/* Target user */}
-                                    <div className="mb-4">
-                                        <label className="text-[10px] font-bold text-textMuted uppercase tracking-widest block mb-2">Add To</label>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            {['raghendh', 'devanandh'].map(u => (
-                                                <button key={u} onClick={() => setAddTarget(u)}
-                                                    className={`py-2.5 rounded-xl text-sm font-bold transition-all border ${addTarget === u ? (u === 'raghendh' ? 'border-primary text-primary' : 'border-secondary text-secondary') : 'border-border text-textMuted'}`}
-                                                    style={{ background: addTarget === u ? (u === 'raghendh' ? 'rgba(34,197,94,0.1)' : 'rgba(249,115,22,0.1)') : '#1e1e22' }}>
-                                                    {u === 'raghendh' ? 'Raghendh' : 'Devanandh'}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    {/* STANDARD / TIMED */}
-                                    {(addSetType === "standard" || addSetType === "timed") && (
-                                        <div className="grid grid-cols-2 gap-3 mb-5">
-                                            <div>
-                                                <label className="text-[10px] font-bold text-textMuted uppercase tracking-widest block mb-2">Sets</label>
-                                                <div className="flex items-center gap-2 rounded-xl border border-border p-2" style={{ background: '#1e1e22' }}>
-                                                    <button onClick={() => setAddSets(s => Math.max(1, s - 1))} className="w-8 h-8 rounded-lg flex items-center justify-center text-textMuted hover:text-textMain transition-colors" style={{ background: '#161618' }}><i className="ph-bold ph-minus text-sm"></i></button>
-                                                    <span className="flex-1 text-center font-teko text-2xl font-bold text-textMain">{addSets}</span>
-                                                    <button onClick={() => setAddSets(s => Math.min(10, s + 1))} className="w-8 h-8 rounded-lg flex items-center justify-center text-textMuted hover:text-textMain transition-colors" style={{ background: '#161618' }}><i className="ph-bold ph-plus text-sm"></i></button>
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label className="text-[10px] font-bold text-textMuted uppercase tracking-widest block mb-2">
-                                                    {addSetType === "timed" ? "Duration (sec)" : "Target Reps"}
-                                                </label>
-                                                <input type="text" value={addReps} onChange={e => setAddReps(e.target.value)} placeholder={addSetType === "timed" ? "e.g. 30" : (addModal.ex.reps || "e.g. 8-10")} className="w-full rounded-xl px-3 py-2.5 text-sm font-medium text-textMain placeholder-textMuted/40 focus:ring-0 border border-border" style={{ background: '#1e1e22' }} />
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* DROP SET */}
-                                    {addSetType === "dropset" && (
-                                        <div className="mb-5">
-                                            <div className="grid grid-cols-2 gap-3 mb-4">
-                                                <div>
-                                                    <label className="text-[10px] font-bold text-textMuted uppercase tracking-widest block mb-2">Rounds</label>
-                                                    <div className="flex items-center gap-2 rounded-xl border border-border p-2" style={{ background: '#1e1e22' }}>
-                                                        <button onClick={() => setAddSets(s => Math.max(1, s - 1))} className="w-8 h-8 rounded-lg flex items-center justify-center text-textMuted" style={{ background: '#161618' }}><i className="ph-bold ph-minus text-sm"></i></button>
-                                                        <span className="flex-1 text-center font-teko text-2xl font-bold text-textMain">{addSets}</span>
-                                                        <button onClick={() => setAddSets(s => Math.min(5, s + 1))} className="w-8 h-8 rounded-lg flex items-center justify-center text-textMuted" style={{ background: '#161618' }}><i className="ph-bold ph-plus text-sm"></i></button>
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <label className="text-[10px] font-bold text-textMuted uppercase tracking-widest block mb-2">Target Reps</label>
-                                                    <input type="text" value={addReps} onChange={e => setAddReps(e.target.value)} placeholder={addModal.ex.reps || "e.g. 8-10"} className="w-full rounded-xl px-3 py-2.5 text-sm font-medium text-textMain placeholder-textMuted/40 focus:ring-0 border border-border" style={{ background: '#1e1e22' }} />
-                                                </div>
-                                            </div>
-                                            <label className="text-[10px] font-bold text-textMuted uppercase tracking-widest block mb-2">Drop Weights (kg) — optional</label>
-                                            <div className="flex gap-2">
-                                                {dropWeights.map((w, i) => (
-                                                    <div key={i} className="flex-1">
-                                                        <div className="text-[9px] text-textMuted text-center mb-1">Drop {i + 1}</div>
-                                                        <input type="number" value={w} onChange={e => { const d = [...dropWeights]; d[i] = e.target.value; setDropWeights(d); }} placeholder="kg" className="w-full rounded-lg px-2 py-2 text-sm font-bold text-center text-textMain border border-border focus:ring-0" style={{ background: '#1e1e22' }} />
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            <div className="mt-2 text-[10px] text-textMuted/60 text-center">Each drop = reduce weight, continue immediately to failure</div>
-                                        </div>
-                                    )}
-
-                                    {/* SUPERSET */}
-                                    {addSetType === "superset" && (
-                                        <div className="mb-5">
-                                            <div className="grid grid-cols-2 gap-3 mb-4">
-                                                <div>
-                                                    <label className="text-[10px] font-bold text-textMuted uppercase tracking-widest block mb-2">Sets</label>
-                                                    <div className="flex items-center gap-2 rounded-xl border border-border p-2" style={{ background: '#1e1e22' }}>
-                                                        <button onClick={() => setAddSets(s => Math.max(1, s - 1))} className="w-8 h-8 rounded-lg flex items-center justify-center text-textMuted" style={{ background: '#161618' }}><i className="ph-bold ph-minus text-sm"></i></button>
-                                                        <span className="flex-1 text-center font-teko text-2xl font-bold text-textMain">{addSets}</span>
-                                                        <button onClick={() => setAddSets(s => Math.min(10, s + 1))} className="w-8 h-8 rounded-lg flex items-center justify-center text-textMuted" style={{ background: '#161618' }}><i className="ph-bold ph-plus text-sm"></i></button>
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <label className="text-[10px] font-bold text-textMuted uppercase tracking-widest block mb-2">Reps Each</label>
-                                                    <input type="text" value={addReps} onChange={e => setAddReps(e.target.value)} placeholder={addModal.ex.reps || "10-12"} className="w-full rounded-xl px-3 py-2.5 text-sm font-medium text-textMain placeholder-textMuted/40 focus:ring-0 border border-border" style={{ background: '#1e1e22' }} />
-                                                </div>
-                                            </div>
-                                            <label className="text-[10px] font-bold text-textMuted uppercase tracking-widest block mb-2">Exercise 1</label>
-                                            <div className="rounded-xl px-3 py-2.5 mb-3 border border-border text-sm font-bold text-textMain" style={{ background: '#111' }}>{addModal.ex.name}</div>
-                                            <label className="text-[10px] font-bold text-textMuted uppercase tracking-widest block mb-2">Exercise 2 (paired)</label>
-                                            <input type="text" value={addExercise2} onChange={e => setAddExercise2(e.target.value.toUpperCase())} placeholder="e.g. MACHINE CHEST FLYES" className="w-full rounded-xl px-3 py-2.5 text-sm font-medium text-textMain placeholder-textMuted/40 focus:ring-0 border border-border uppercase" style={{ background: '#1e1e22' }} />
-                                            <div className="mt-2 text-[10px] text-textMuted/60 text-center">Both exercises added. Zero rest between them.</div>
-                                        </div>
-                                    )}
-
-                                    {/* PYRAMID */}
-                                    {addSetType === "pyramid" && (
-                                        <div className="mb-5">
-                                            <label className="text-[10px] font-bold text-textMuted uppercase tracking-widest block mb-2">Rounds</label>
-                                            <div className="flex items-center gap-2 rounded-xl border border-border p-2 mb-3" style={{ background: '#1e1e22', maxWidth: 140 }}>
-                                                <button onClick={() => setPyramidRounds(r => Math.max(1, r - 1))} className="w-8 h-8 rounded-lg flex items-center justify-center text-textMuted" style={{ background: '#161618' }}><i className="ph-bold ph-minus text-sm"></i></button>
-                                                <span className="flex-1 text-center font-teko text-2xl font-bold text-textMain">{pyramidRounds}</span>
-                                                <button onClick={() => setPyramidRounds(r => Math.min(3, r + 1))} className="w-8 h-8 rounded-lg flex items-center justify-center text-textMuted" style={{ background: '#161618' }}><i className="ph-bold ph-plus text-sm"></i></button>
-                                            </div>
-                                            <div className="rounded-xl p-3 border border-white/5" style={{ background: 'rgba(0,0,0,0.3)' }}>
-                                                <div className="text-[10px] font-bold text-textMuted uppercase tracking-wider mb-2">Generated Sets ({pyramidRounds * 4} total)</div>
-                                                <div className="flex flex-wrap gap-1.5">
-                                                    {Array.from({ length: pyramidRounds }).map((_, r) =>
-                                                        ["×20", "×15", "×10", "×fail"].map((rep, i) => (
-                                                            <span key={`${r}-${i}`} className="text-[10px] font-mono px-2 py-1 rounded" style={{ background: '#1e1e22', color: '#3b82f6', border: '1px solid #3b82f620' }}>Set {r * 4 + i + 1} {rep}</span>
-                                                        ))
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <div className="mt-2 text-[10px] text-textMuted/60 text-center">30 sec rest between sets · 2 min between rounds</div>
-                                        </div>
-                                    )}
-
-                                    {/* Program info */}
-                                    <div className="flex items-start gap-2 mb-5 rounded-xl p-3 border border-white/5" style={{ background: 'rgba(0,0,0,0.3)' }}>
-                                        <i className="ph-fill ph-info text-textMuted/50 mt-0.5 shrink-0 text-xs"></i>
-                                        <div className="text-[11px] text-textMuted leading-relaxed">
-                                            <span className="text-textMain font-medium">Program default:</span> {addModal.ex.sets} sets × {addModal.ex.reps} · {addModal.ex.rest} rest
-                                        </div>
-                                    </div>
-
-                                    <button onClick={confirmAddExercise} disabled={addStatus === "Adding..."} className="w-full py-4 rounded-2xl text-white font-bold text-sm tracking-wide transition-all active:scale-[0.98]" style={{ background: '#3b82f6', boxShadow: '0 8px 24px rgba(59,130,246,0.35)' }}>
-                                        {addStatus || "Add to Today's Workout"}
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
+                    {/* Program Selector */}
+                    <div className="mb-4 glass-panel rounded-2xl p-2 flex items-center justify-between">
+                        <select value={activeProgramId} onChange={(e) => { setActiveProgramId(e.target.value); _setActiveDay(1); }} className="bg-transparent text-textMain font-bold uppercase text-sm focus:ring-0 w-full">
+                            {programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                        </select>
+                        <i className="ph-bold ph-caret-down text-textMuted mr-2"></i>
+                    </div>
 
                     {/* Header */}
                     <div className="rounded-2xl p-5 mb-5" style={{ background: '#161618', border: '1px solid rgba(255,255,255,0.07)', borderLeft: '3px solid #3b82f6' }}>
-                        <div className="text-[10px] font-bold uppercase tracking-[0.25em] mb-1.5" style={{ color: '#3b82f6' }}>The Master · 8-Day Rotation Split</div>
-                        <h1 className="text-2xl font-black text-textMain tracking-tight mb-1">8-Day Workout Split</h1>
-                        <div className="text-[12px] text-textMuted">3 Days On · 1 Day Off · Double Progression Loading</div>
-                        <div className="flex gap-2 mt-4">
-                            {[["split", "📋 Split"], ["rules", "⚖️ Rules"]].map(([id, label]) => (
-                                <button key={id} onClick={() => setActiveTab(id)} className="px-4 py-2 rounded-lg text-xs font-bold transition-all border"
+                        <div className="text-[10px] font-bold uppercase tracking-[0.25em] mb-1.5" style={{ color: '#3b82f6' }}>Active Routine</div>
+                        <h1 className="text-2xl font-black text-textMain tracking-tight mb-1">{activeProgram.name}</h1>
+                        <div className="text-[12px] text-textMuted">{activeProgram.subtitle}</div>
+                        <div className="flex gap-2 mt-4 overflow-x-auto no-scrollbar pb-1">
+                            {[["split", "📋 Split"], ["rules", "⚖️ Rules"], ["edit", "✏️ Edit"]].map(([id, label]) => (
+                                <button key={id} onClick={() => setActiveTab(id)} className="px-4 py-2 rounded-lg text-xs font-bold transition-all border shrink-0"
                                     style={{ background: activeTab === id ? '#3b82f6' : '#1e1e22', color: activeTab === id ? '#fff' : '#8a8a96', borderColor: activeTab === id ? '#3b82f6' : 'rgba(255,255,255,0.07)' }}>
                                     {label}
                                 </button>
@@ -1443,17 +1516,18 @@
                             <>
                                 {/* Day chips */}
                                 <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 -mx-1 px-1 mb-5">
-                                    {DAYS.map((d) => (
+                                    {activeProgram.days.map((d) => (
                                         <button key={d.id} onClick={() => { setActiveDay(d.id); setExpandedEx(null); }} className="shrink-0 rounded-xl transition-all text-center"
                                             style={{ padding: "10px 14px", background: activeDay === d.id ? d.color : '#1e1e22', color: activeDay === d.id ? '#fff' : d.rest ? '#555' : '#888', border: `1px solid ${activeDay === d.id ? d.color : 'rgba(255,255,255,0.07)'}`, minWidth: 76, fontWeight: "bold", fontSize: 12, lineHeight: 1.4 }}>
                                             <div style={{ fontSize: 15 }}>{d.emoji}</div>
                                             <div style={{ fontFamily: 'Inter, sans-serif' }}>{d.label}</div>
-                                            <div style={{ fontWeight: "normal", fontSize: 10, opacity: 0.75 }}>{d.rest ? "REST" : d.focus.split(" & ")[0]}</div>
+                                            <div style={{ fontWeight: "normal", fontSize: 10, opacity: 0.75 }}>{d.rest ? "REST" : (d.focus ? d.focus.split(" & ")[0] : '')}</div>
                                         </button>
                                     ))}
                                 </div>
 
                                 {/* Day header */}
+                                {currentDay && (
                                 <div className="rounded-2xl p-4 mb-4 flex items-center gap-3" style={{ background: currentDay.color + '14', border: `1px solid ${currentDay.color}33`, borderLeft: `4px solid ${currentDay.color}` }}>
                                     <span style={{ fontSize: 28 }}>{currentDay.emoji}</span>
                                     <div className="flex-1">
@@ -1467,8 +1541,9 @@
                                         </div>
                                     )}
                                 </div>
+                                )}
 
-                                {currentDay.rest && (
+                                {currentDay && currentDay.rest && (
                                     <div className="rounded-2xl p-10 text-center" style={{ background: '#161618', border: '1px solid rgba(255,255,255,0.07)' }}>
                                         <div style={{ fontSize: 50, marginBottom: 12 }}>😴</div>
                                         <div className="text-lg font-bold text-textMuted mb-2">Full Rest Day</div>
@@ -1477,9 +1552,9 @@
                                     </div>
                                 )}
 
-                                {!currentDay.rest && (
+                                {currentDay && !currentDay.rest && (
                                     <div className="space-y-2">
-                                        {currentDay.exercises.map((ex, i) => {
+                                        {(currentDay.exercises || []).map((ex, i) => {
                                             const isExpanded = expandedEx === i;
                                             const tagColor = TAG_COLORS[ex.tag] || '#555';
                                             return (
@@ -1487,7 +1562,6 @@
                                                     <div onClick={() => setExpandedEx(isExpanded ? null : i)} className="flex items-center gap-3 p-4 cursor-pointer">
                                                         <div className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-xs font-bold text-white" style={{ background: currentDay.color }}>{i + 1}</div>
                                                         <div className="flex-1 min-w-0">
-                                                            {/* FIX 1: Show full name when collapsed (removed truncate), still wraps */}
                                                             <div className="text-sm font-semibold text-textMain leading-tight">{ex.name}</div>
                                                             {ex.tag && (
                                                                 <span className="text-[9px] font-bold uppercase tracking-wider mt-0.5 inline-block px-1.5 py-0.5 rounded" style={{ background: tagColor + '22', color: tagColor, border: `1px solid ${tagColor}44` }}>{ex.tag}</span>
@@ -1519,14 +1593,16 @@
                                                                 {[["⚖️ Weight Method", ex.weightMethod, true], ["⏱ Tempo", ex.tempo, false], ["😮‍💨 Rest", ex.rest, false]].map(([label, value, full]) => (
                                                                     <div key={label} className="rounded-xl p-3" style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.06)', gridColumn: full ? '1 / -1' : 'auto' }}>
                                                                         <div className="text-[9px] font-bold uppercase tracking-wider text-textMuted/50 mb-1.5">{label}</div>
-                                                                        <div className="text-xs text-textMain/75 leading-relaxed">{value}</div>
+                                                                        <div className="text-xs text-textMain/75 leading-relaxed">{value || "N/A"}</div>
                                                                     </div>
                                                                 ))}
                                                             </div>
+                                                            {ex.notes && (
                                                             <div className="mt-2 rounded-xl p-3" style={{ background: currentDay.color + '0d', border: `1px solid ${currentDay.color}2a` }}>
                                                                 <div className="text-[9px] font-bold uppercase tracking-wider mb-1.5" style={{ color: currentDay.color }}>📌 Key Note</div>
                                                                 <div className="text-xs leading-relaxed" style={{ color: '#ccc' }}>{ex.notes}</div>
                                                             </div>
+                                                            )}
                                                             <button onClick={() => openAddModal(ex, currentDay.color)} className="mt-3 w-full py-2.5 rounded-xl text-sm font-bold transition-all active:scale-[0.98] flex items-center justify-center gap-2" style={{ background: '#3b82f615', border: '1px solid #3b82f640', color: '#3b82f6' }}>
                                                                 <i className="ph-bold ph-plus-circle"></i> Add to Today's Workout
                                                             </button>
@@ -1543,19 +1619,67 @@
                         {activeTab === "rules" && (
                             <div>
                                 <div className="mb-4">
-                                    <div className="text-xl font-bold text-textMain mb-1">Weight & Rep Rules</div>
-                                    <div className="text-xs text-textMuted">CBum's exact loading philosophy — applies to every exercise in the split</div>
+                                    <div className="text-xl font-bold text-textMain mb-1">Program Rules</div>
+                                    <div className="text-xs text-textMuted">Core philosophies driving this program</div>
                                 </div>
                                 <div className="space-y-2">
-                                    {RULES.map((r, i) => (
+                                    {(activeProgram.rules || []).map((r, i) => (
                                         <div key={i} className="rounded-xl p-4 flex gap-3" style={{ background: i % 2 === 0 ? '#161618' : '#131315', border: '1px solid rgba(255,255,255,0.06)' }}>
-                                            <div className="w-7 h-7 rounded-full shrink-0 flex items-center justify-center text-xs font-bold" style={{ background: '#C0392B22', border: '1px solid #C0392B44', color: '#C0392B' }}>{i + 1}</div>
+                                            <div className="w-7 h-7 rounded-full shrink-0 flex items-center justify-center text-xs font-bold" style={{ background: '#3b82f622', border: '1px solid #3b82f644', color: '#3b82f6' }}>{i + 1}</div>
                                             <div>
-                                                <div className="text-[11px] font-bold uppercase tracking-wide mb-1" style={{ color: '#C0392B' }}>{r.rule}</div>
+                                                <div className="text-[11px] font-bold uppercase tracking-wide mb-1" style={{ color: '#3b82f6' }}>{r.rule}</div>
                                                 <div className="text-xs text-textMain/70 leading-relaxed">{r.method}</div>
                                             </div>
                                         </div>
                                     ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === "edit" && editProgramData && (
+                            <div className="space-y-4">
+                                <div className="glass-panel p-4 rounded-xl">
+                                    <label className="text-[10px] font-bold text-textMuted uppercase block mb-1">Program Name</label>
+                                    <input type="text" value={editProgramData.name} onChange={e => updateEditProgram('name', e.target.value)} className="w-full bg-surfaceLight border border-border rounded px-3 py-2 text-sm focus:ring-0 mb-3 text-textMain" />
+                                    
+                                    <label className="text-[10px] font-bold text-textMuted uppercase block mb-1">Subtitle</label>
+                                    <input type="text" value={editProgramData.subtitle} onChange={e => updateEditProgram('subtitle', e.target.value)} className="w-full bg-surfaceLight border border-border rounded px-3 py-2 text-sm focus:ring-0 text-textMain" />
+                                </div>
+
+                                <div className="flex justify-between items-center px-1">
+                                    <div className="text-sm font-bold uppercase tracking-wide text-textMuted">Days Outline</div>
+                                    <div className="text-[10px] text-primary bg-primary/10 px-2 py-1 rounded">Auto-syncs changes to DB</div>
+                                </div>
+                                
+                                {editProgramData.days.map((d, i) => (
+                                    <div key={i} className="glass-panel p-4 rounded-xl border-l-4" style={{ borderColor: d.color }}>
+                                        <div className="flex gap-2 items-center mb-3">
+                                            <input type="text" value={d.label} onChange={e => { const newDays = [...editProgramData.days]; newDays[i].label = e.target.value; updateEditProgram('days', newDays); }} className="w-20 bg-surfaceLight border border-border rounded px-2 py-1 text-xs focus:ring-0 text-textMain" placeholder="Day X" />
+                                            <input type="text" value={d.focus} onChange={e => { const newDays = [...editProgramData.days]; newDays[i].focus = e.target.value; updateEditProgram('days', newDays); }} className="flex-1 bg-surfaceLight border border-border rounded px-2 py-1 text-xs focus:ring-0 text-textMain" placeholder="Focus (e.g. Chest)" />
+                                        </div>
+                                        
+                                        {!d.rest && (
+                                            <div className="pl-2 space-y-2 border-l border-white/5">
+                                                {(d.exercises || []).map((ex, exIdx) => (
+                                                    <div key={exIdx} className="flex gap-2 items-center">
+                                                        <i className="ph-bold ph-caret-right text-textMuted text-[10px]"></i>
+                                                        <input type="text" value={ex.name} onChange={e => { const newDays = [...editProgramData.days]; newDays[i].exercises[exIdx].name = e.target.value; updateEditProgram('days', newDays); }} className="flex-1 bg-transparent border-b border-white/10 text-xs px-1 focus:ring-0 text-textMain uppercase" />
+                                                        <button onClick={() => { const newDays = [...editProgramData.days]; newDays[i].exercises.splice(exIdx, 1); updateEditProgram('days', newDays); }} className="text-red-400 hover:text-red-300 p-1"><i className="ph-bold ph-trash text-[10px]"></i></button>
+                                                    </div>
+                                                ))}
+                                                <button onClick={() => { const newDays = [...editProgramData.days]; if(!newDays[i].exercises) newDays[i].exercises = []; newDays[i].exercises.push({ name: "New Exercise", sets: "3", reps: "10" }); updateEditProgram('days', newDays); }} className="text-[10px] text-textMuted hover:text-white flex items-center gap-1 mt-2">
+                                                    <i className="ph-bold ph-plus"></i> Add Exercise
+                                                </button>
+                                            </div>
+                                        )}
+                                        {d.rest && <div className="text-xs text-textMuted italic">Rest Day</div>}
+                                    </div>
+                                ))}
+
+                                <div className="flex gap-2 mt-4">
+                                    <button onClick={saveEditedProgram} className="flex-1 bg-primary text-white font-bold py-3 rounded-xl shadow-neon-green hover:opacity-90 transition-opacity">
+                                        {editStatus || "Save Program"}
+                                    </button>
                                 </div>
                             </div>
                         )}
@@ -1826,7 +1950,7 @@
                                 {tab === 'devanandh' && <Dashboard userKey="devanandh" allHistory={allHistory} colorTheme={themes.devanandh} date={currentDate} />}
                                 {tab === 'history' && <Timeline historyData={allHistory} />}
                                 {tab === 'pr' && <PRWidget historyData={allHistory} />}
-                                {tab === 'program' && <ProgramWidget />}
+                                {tab === 'program' && <ProgramWidget userKey={tab === 'program' ? 'raghendh' : tab} />}
                             </div>
                         )}
 
