@@ -21,10 +21,13 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, set, update, onValue, get, child, push, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    <script>
+        // Firebase loaded via dynamic import so Babel standalone doesn't try to transform it
+        (async function() {
+            try {
+                const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js");
+                const { getDatabase, ref, set, update, onValue, get, child, push, remove } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js");
+                const { getAuth, signInAnonymously, onAuthStateChanged } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
 
         const firebaseConfig = {
             apiKey: "AIzaSyByLeOnstoCGQ9vew1NYXtBe2E_xyUVgDg",
@@ -49,6 +52,8 @@
         window.push = push;
         window.remove = remove;
         window.signInAnonymously = signInAnonymously;
+            } catch(e) { console.error('Firebase load error:', e); }
+        })();
     </script>
 
     <script>
@@ -193,6 +198,49 @@
     </style>
 </head>
 <body>
+    <!-- Diagnostic overlay - shows if React/Babel fail to load -->
+    <div id="diag" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#0d0d0f;z-index:99999;padding:24px;font-family:monospace;font-size:13px;color:#f0f0f2;overflow:auto;">
+        <div style="max-width:400px;margin:0 auto;">
+            <div style="color:#22c55e;font-weight:bold;font-size:18px;margin-bottom:16px;">DOD — Diagnostics</div>
+            <div id="diag-log"></div>
+        </div>
+    </div>
+    <script>
+        // This runs before React/Babel — purely vanilla JS
+        var diagEl = document.getElementById('diag');
+        var logEl = document.getElementById('diag-log');
+        var logs = [];
+        function dlog(msg, ok) {
+            var color = ok === false ? '#ff6666' : ok === true ? '#22c55e' : '#aaaaaa';
+            logs.push('<div style="margin-bottom:6px;color:' + color + '">' + msg + '</div>');
+            logEl.innerHTML = logs.join('');
+        }
+        dlog('Page loaded ✓', true);
+        // Show diagnostic after 4 seconds if app hasn't rendered
+        setTimeout(function() {
+            var root = document.getElementById('root');
+            if (!root || root.innerHTML.trim() === '') {
+                diagEl.style.display = 'block';
+                dlog('React root is EMPTY after 4s — app failed to render', false);
+                dlog('React available: ' + (typeof React !== 'undefined'), typeof React !== 'undefined');
+                dlog('ReactDOM available: ' + (typeof ReactDOM !== 'undefined'), typeof ReactDOM !== 'undefined');
+                dlog('Babel available: ' + (typeof Babel !== 'undefined'), typeof Babel !== 'undefined');
+                dlog('window.db set: ' + (window.db != null), window.db != null);
+                dlog('window.auth set: ' + (window.auth != null), window.auth != null);
+                if (window.__babelError) dlog('Babel error: ' + window.__babelError, false);
+                if (window.__reactError) dlog('React error: ' + window.__reactError, false);
+            }
+        }, 4000);
+        // Catch global errors
+        window.addEventListener('error', function(e) {
+            window.__babelError = e.message + ' ('+e.filename+':'+e.lineno+')';
+            dlog('JS Error: ' + e.message, false);
+        });
+        window.addEventListener('unhandledrejection', function(e) {
+            dlog('Unhandled Promise rejection: ' + e.reason, false);
+        });
+    </script>
+
     <div id="root"></div>
 
     <script type="text/babel">
