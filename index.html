@@ -17,7 +17,7 @@
     
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone@7.23.6/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     
@@ -198,6 +198,30 @@
     </style>
 </head>
 <body>
+    <script>
+        // STEP 1: Kill any existing service workers and clear their caches immediately.
+        // This runs synchronously before anything else so the old SW can't intercept.
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(regs) {
+                if (regs.length > 0) {
+                    var kills = regs.map(function(r) { return r.unregister(); });
+                    Promise.all(kills).then(function() {
+                        // Also nuke all caches
+                        if ('caches' in window) {
+                            caches.keys().then(function(keys) {
+                                return Promise.all(keys.map(function(k) { return caches.delete(k); }));
+                            }).then(function() {
+                                // Force reload from server (bypass cache)
+                                window.location.reload(true);
+                            });
+                        } else {
+                            window.location.reload(true);
+                        }
+                    });
+                }
+            });
+        }
+    </script>
     <!-- Diagnostic overlay - shows if React/Babel fail to load -->
     <div id="diag" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#0d0d0f;z-index:99999;padding:24px;font-family:monospace;font-size:13px;color:#f0f0f2;overflow:auto;">
         <div style="max-width:400px;margin:0 auto;">
@@ -243,7 +267,12 @@
 
     <div id="root"></div>
 
-    <script type="text/babel">
+    <script>
+        // Configure Babel standalone BEFORE it processes the text/babel script.
+        // Forces CommonJS module output so no ES `import` statements appear in output.
+        window.Babel && (window.Babel.availablePresets['env'] || true);
+    </script>
+    <script type="text/babel" data-presets="react,env" data-plugins="transform-modules-commonjs">
         const { useState, useEffect, useRef, useMemo } = React;
 
         const normalize = (str) => str ? str.trim().toUpperCase() : "";
